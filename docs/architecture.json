@@ -1,0 +1,48 @@
+{
+  "project": "Hamere Trufat",
+  "version": "0.1.0",
+  "techStack": {
+    "mobile": "React Native + Expo (TypeScript)",
+    "backend": "NestJS + MongoDB",
+    "admin": "Next.js + Tailwind + shadcn/ui"
+  },
+  "apps": [
+    {
+      "name": "mobile-app",
+      "platform": "Expo",
+      "keyDependencies": ["react-native", "expo-router", "react-query", "zustand"],
+      "entryPoint": "App.tsx",
+      "ports": ["19000"],
+      "environment": ["EXPO_PUBLIC_API_URL", "EXPO_PUBLIC_SENTRY_DSN"]
+    },
+    {
+      "name": "backend",
+      "platform": "NestJS",
+      "keyDependencies": ["@nestjs/core", "@nestjs/mongoose", "mongoose", "class-validator"],
+      "entryPoint": "src/main.ts",
+      "ports": ["4000"],
+      "environment": ["MONGODB_URI", "JWT_SECRET", "PORT"]
+    },
+    {
+      "name": "admin",
+      "platform": "Next.js",
+      "keyDependencies": ["next", "react", "tailwindcss", "@tanstack/react-query", "shadcn/ui"],
+      "entryPoint": "src/app/page.tsx",
+      "ports": ["3000"],
+      "environment": ["NEXT_PUBLIC_API_URL", "NEXTAUTH_SECRET"]
+    }
+  ],
+  "sharedResources": {
+    "database": "MongoDB Atlas primary cluster",
+    "auth": "JWT access + refresh tokens",
+    "storage": "S3-compatible bucket for uploads",
+    "observability": ["Sentry", "OpenTelemetry", "Logtail"],
+    "ci": "GitHub Actions"
+  },
+  "integration": {
+    "mobile_to_backend": "REST via axios client",
+    "admin_to_backend": "REST + GraphQL",
+    "notifications": "Expo push service + SendGrid",
+    "webhooks": "Outgoing via Nest event emitters"
+  }
+}
