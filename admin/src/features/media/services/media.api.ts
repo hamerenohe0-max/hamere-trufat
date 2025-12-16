@@ -10,8 +10,15 @@ export interface MediaItem {
   uploadedBy: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const mediaApi = {
-  list: () => apiFetch<MediaItem[]>("/admin/media"),
+  list: () => apiFetch<PaginatedResponse<MediaItem>>("/admin/media"),
   upload: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);

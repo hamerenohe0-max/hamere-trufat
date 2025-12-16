@@ -13,8 +13,15 @@ export interface NewsItem {
   updatedAt: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const newsApi = {
-  list: () => apiFetch<NewsItem[]>("/admin/news"),
+  list: () => apiFetch<PaginatedResponse<NewsItem>>("/admin/news"),
   get: (id: string) => apiFetch<NewsItem>(`/admin/news/${id}`),
   create: (data: Omit<NewsItem, "id" | "createdAt" | "updatedAt">) =>
     apiFetch<NewsItem>("/admin/news", { method: "POST", body: data }),

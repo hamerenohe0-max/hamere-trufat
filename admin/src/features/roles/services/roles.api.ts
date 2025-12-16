@@ -11,9 +11,16 @@ export interface PublisherRequest {
   reviewedBy?: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const rolesApi = {
   getPublisherRequests: () =>
-    apiFetch<PublisherRequest[]>("/admin/publishers/requests"),
+    apiFetch<PaginatedResponse<PublisherRequest>>("/admin/publishers/requests"),
   approvePublisher: (id: string) =>
     apiFetch<void>(`/admin/publishers/${id}/approve`, { method: "POST" }),
   rejectPublisher: (id: string) =>

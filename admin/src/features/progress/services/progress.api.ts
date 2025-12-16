@@ -16,8 +16,15 @@ export interface ProgressReport {
   updatedAt: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const progressApi = {
-  list: () => apiFetch<ProgressReport[]>("/admin/progress"),
+  list: () => apiFetch<PaginatedResponse<ProgressReport>>("/admin/progress"),
   get: (id: string) => apiFetch<ProgressReport>(`/admin/progress/${id}`),
   create: (data: Omit<ProgressReport, "id" | "createdAt" | "updatedAt">) =>
     apiFetch<ProgressReport>("/admin/progress", { method: "POST", body: data }),

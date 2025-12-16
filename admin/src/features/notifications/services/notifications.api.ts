@@ -10,8 +10,15 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const notificationsApi = {
-  list: () => apiFetch<Notification[]>("/admin/notifications"),
+  list: () => apiFetch<PaginatedResponse<Notification>>("/admin/notifications"),
   send: (data: {
     type: Notification["type"];
     title: string;

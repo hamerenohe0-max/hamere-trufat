@@ -34,7 +34,7 @@ export function MediaLibrary() {
     },
   ];
 
-  const mediaItems = media || mockMedia;
+  const mediaItems = media?.items || mockMedia;
 
   const getTypeIcon = (type: string) => {
     switch (type) {

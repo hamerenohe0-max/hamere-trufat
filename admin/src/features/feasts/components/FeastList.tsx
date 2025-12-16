@@ -44,7 +44,7 @@ export function FeastList() {
     },
   ];
 
-  const feastItems = feasts || mockFeasts;
+  const feastItems = feasts?.items || mockFeasts;
 
   if (isLoading) {
     return <div className="text-center py-8">Loading feasts...</div>;

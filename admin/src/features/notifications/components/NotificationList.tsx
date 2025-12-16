@@ -42,7 +42,7 @@ export function NotificationList() {
     },
   ];
 
-  const notificationItems = notifications || mockNotifications;
+  const notificationItems = notifications?.items || mockNotifications;
 
   if (isLoading) {
     return <div className="text-center py-8">Loading notifications...</div>;

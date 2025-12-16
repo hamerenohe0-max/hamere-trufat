@@ -45,10 +45,11 @@ export function UserList() {
       status: "active" as const,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
     },
   ];
 
-  const userItems = users || mockUsers;
+  const userItems = users?.items || mockUsers;
 
   const getRoleBadge = (role: string) => {
     const colors: Record<string, string> = {

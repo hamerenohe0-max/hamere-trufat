@@ -49,7 +49,7 @@ export function NewsList() {
     },
   ];
 
-  const newsItems = news || mockNews;
+  const newsItems = news?.items || mockNews;
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {

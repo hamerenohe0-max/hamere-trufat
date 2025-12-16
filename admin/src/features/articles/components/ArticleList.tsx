@@ -47,7 +47,7 @@ export function ArticleList() {
     },
   ];
 
-  const articleItems = articles || mockArticles;
+  const articleItems = articles?.items || mockArticles;
 
   if (isLoading) {
     return <div className="text-center py-8">Loading articles...</div>;

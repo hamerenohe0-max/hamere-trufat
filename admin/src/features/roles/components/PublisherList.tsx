@@ -48,7 +48,7 @@ export function PublisherList() {
     },
   ];
 
-  const requestItems = requests || mockRequests;
+  const requestItems = requests?.items || mockRequests;
   const pendingRequests = requestItems.filter((r) => r.status === "pending");
 
   if (isLoading) {

@@ -44,7 +44,7 @@ export function EventList() {
     },
   ];
 
-  const eventItems = events || mockEvents;
+  const eventItems = events?.items || mockEvents;
 
   if (isLoading) {
     return <div className="text-center py-8">Loading events...</div>;

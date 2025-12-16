@@ -14,8 +14,15 @@ export interface Article {
   relatedFeastIds: string[];
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const articlesApi = {
-  list: () => apiFetch<Article[]>("/admin/articles"),
+  list: () => apiFetch<PaginatedResponse<Article>>("/admin/articles"),
   get: (id: string) => apiFetch<Article>(`/admin/articles/${id}`),
   create: (data: Omit<Article, "id" | "createdAt" | "updatedAt">) =>
     apiFetch<Article>("/admin/articles", { method: "POST", body: data }),

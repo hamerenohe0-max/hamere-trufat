@@ -12,8 +12,15 @@ export interface User {
   lastLoginAt?: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const usersApi = {
-  list: () => apiFetch<User[]>("/admin/users"),
+  list: () => apiFetch<PaginatedResponse<User>>("/admin/users"),
   get: (id: string) => apiFetch<User>(`/admin/users/${id}`),
   update: (id: string, data: Partial<User>) =>
     apiFetch<User>(`/admin/users/${id}`, { method: "PATCH", body: data }),

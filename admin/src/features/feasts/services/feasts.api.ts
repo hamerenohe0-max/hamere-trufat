@@ -16,8 +16,15 @@ export interface Feast {
   updatedAt: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const feastsApi = {
-  list: () => apiFetch<Feast[]>("/admin/feasts"),
+  list: () => apiFetch<PaginatedResponse<Feast>>("/admin/feasts"),
   get: (id: string) => apiFetch<Feast>(`/admin/feasts/${id}`),
   create: (data: Omit<Feast, "id" | "createdAt" | "updatedAt">) =>
     apiFetch<Feast>("/admin/feasts", { method: "POST", body: data }),

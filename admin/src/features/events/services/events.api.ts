@@ -15,8 +15,15 @@ export interface Event {
   updatedAt: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const eventsApi = {
-  list: () => apiFetch<Event[]>("/admin/events"),
+  list: () => apiFetch<PaginatedResponse<Event>>("/admin/events"),
   get: (id: string) => apiFetch<Event>(`/admin/events/${id}`),
   create: (data: Omit<Event, "id" | "createdAt" | "updatedAt">) =>
     apiFetch<Event>("/admin/events", { method: "POST", body: data }),
