@@ -1,103 +1,128 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { PublisherRequest, PublisherRequestDocument } from '../schemas/publisher-request.schema';
+import { SupabaseService } from '../../../common/supabase/supabase.service';
 import { UsersService } from '../../users/services/users.service';
 
 @Injectable()
 export class RolesService {
   constructor(
-    @InjectModel(PublisherRequest.name) private requestModel: Model<PublisherRequestDocument>,
+    private readonly supabase: SupabaseService,
     private usersService: UsersService,
   ) {}
 
-  async createRequest(userId: string): Promise<PublisherRequestDocument> {
-    const existing = await this.requestModel.findOne({ userId }).exec();
+  async createRequest(userId: string): Promise<any> {
+    const { data: existing } = await this.supabase.client
+      .from('publisher_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
     if (existing) {
       if (existing.status === 'pending') {
         throw new ForbiddenException('You already have a pending publisher request');
       }
       // If rejected, allow new request
       if (existing.status === 'rejected') {
-        existing.status = 'pending';
-        existing.requestedAt = new Date();
-        existing.reviewedAt = undefined;
-        existing.reviewedBy = undefined;
-        existing.rejectionReason = undefined;
-        return existing.save();
+        const { data } = await this.supabase.client
+          .from('publisher_requests')
+          .update({
+            status: 'pending',
+            requested_at: new Date().toISOString(),
+            reviewed_at: null,
+            reviewed_by: null,
+            rejection_reason: null,
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+        return data;
       }
     }
 
-    const request = new this.requestModel({
-      userId,
-      status: 'pending',
-      requestedAt: new Date(),
-    });
+    const { data } = await this.supabase.client
+      .from('publisher_requests')
+      .insert({
+        user_id: userId,
+        status: 'pending',
+        requested_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
-    return request.save();
+    return data;
   }
 
   async findAll(filters?: { status?: string; limit?: number; offset?: number }) {
-    const query: any = {};
-    if (filters?.status) query.status = filters.status;
+    let query = this.supabase.client
+      .from('publisher_requests')
+      .select('*, users(name, email)', { count: 'exact' });
+
+    if (filters?.status) query = query.eq('status', filters.status);
 
     const limit = filters?.limit || 20;
     const offset = filters?.offset || 0;
 
-    const [items, total] = await Promise.all([
-      this.requestModel
-        .find(query)
-        .sort({ requestedAt: -1 })
-        .limit(limit)
-        .skip(offset)
-        .populate('userId', 'name email')
-        .exec(),
-      this.requestModel.countDocuments(query).exec(),
-    ]);
+    query = query.order('requested_at', { ascending: false }).range(offset, offset + limit - 1);
 
-    return { items, total, limit, offset };
+    const { data, count } = await query;
+
+    return { items: data || [], total: count || 0, limit, offset };
   }
 
-  async findOne(id: string): Promise<PublisherRequestDocument> {
-    const request = await this.requestModel.findById(id).exec();
-    if (!request) {
+  async findOne(id: string): Promise<any> {
+    const { data: request, error } = await this.supabase.client
+      .from('publisher_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !request) {
       throw new NotFoundException(`Publisher request with ID ${id} not found`);
     }
     return request;
   }
 
-  async approve(id: string, reviewerId: string): Promise<PublisherRequestDocument> {
+  async approve(id: string, reviewerId: string): Promise<any> {
     const request = await this.findOne(id);
     if (request.status !== 'pending') {
       throw new ForbiddenException('Only pending requests can be approved');
     }
 
-    request.status = 'approved';
-    request.reviewedAt = new Date();
-    request.reviewedBy = reviewerId;
+    const { data } = await this.supabase.client
+      .from('publisher_requests')
+      .update({
+        status: 'approved',
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: reviewerId,
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
     // Update user role
-    const user = await this.usersService.findById(request.userId);
-    if (user) {
-      user.role = 'publisher';
-      await user.save();
-    }
+    await this.usersService.update(request.user_id, { role: 'publisher' });
 
-    return request.save();
+    return data;
   }
 
-  async reject(id: string, reviewerId: string, reason?: string): Promise<PublisherRequestDocument> {
+  async reject(id: string, reviewerId: string, reason?: string): Promise<any> {
     const request = await this.findOne(id);
     if (request.status !== 'pending') {
       throw new ForbiddenException('Only pending requests can be rejected');
     }
 
-    request.status = 'rejected';
-    request.reviewedAt = new Date();
-    request.reviewedBy = reviewerId;
-    if (reason) request.rejectionReason = reason;
+    const { data } = await this.supabase.client
+      .from('publisher_requests')
+      .update({
+        status: 'rejected',
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: reviewerId,
+        rejection_reason: reason,
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
-    return request.save();
+    return data;
   }
 }
 

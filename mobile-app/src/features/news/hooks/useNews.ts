@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { newsApi } from '../services/news.api';
 
 export const useNewsList = () =>
@@ -21,16 +21,26 @@ export const useNewsComments = (id: string) =>
     enabled: !!id,
   });
 
-export const useReactToNews = (id: string) =>
-  useMutation({
+export const useReactToNews = (id: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (reaction: 'like' | 'dislike') =>
       newsApi.react(id, reaction),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['news', id] });
+    },
   });
+};
 
-export const useBookmarkNews = (id: string) =>
-  useMutation({
+export const useBookmarkNews = (id: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: () => newsApi.bookmark(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['news', id] });
+    },
   });
+};
 
 export const useTranslateNews = (id: string) =>
   useMutation({

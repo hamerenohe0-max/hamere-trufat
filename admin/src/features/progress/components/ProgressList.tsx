@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { progressApi } from "../services/progress.api";
+import { useState } from "react";
+import { useProgressList, useDeleteProgress } from "../hooks/useProgress";
 import {
   Table,
   TableBody,
@@ -11,105 +11,132 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Edit, Trash2, Eye } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { Edit2, Trash2 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+import { ProgressForm } from "./ProgressForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export function ProgressList() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const { data: reports, isLoading } = useQuery({
-    queryKey: ["admin-progress"],
-    queryFn: progressApi.list,
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: progressApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-progress"] });
-    },
-  });
-
-  // Mock data
-  const mockReports = [
-    {
-      id: "1",
-      title: "የቤተክርስቲያን ሕንፃ የግንባታ ስራ",
-      summary: "ደብረ ምህረት መድኃኔዓለም ቤተክርስቲያን",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      timeline: [],
-    },
-  ];
-
-  const reportItems = reports?.items || mockReports;
+  const { data, isLoading } = useProgressList();
+  const deleteMutation = useDeleteProgress();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading progress reports...</div>;
+    return <div>Loading progress reports...</div>;
   }
 
+  const handleDelete = async () => {
+    if (deletingId) {
+      try {
+        await deleteMutation.mutateAsync(deletingId);
+        toast.success("Report deleted successfully");
+        setDeletingId(null);
+      } catch (error) {
+        toast.error("Failed to delete report");
+        console.error(error);
+      }
+    }
+  };
+
   return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Summary</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {reportItems.length === 0 ? (
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                No progress reports found. Create your first report!
-              </TableCell>
+              <TableHead>Title</TableHead>
+              <TableHead>Summary</TableHead>
+              <TableHead>Likes</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ) : (
-            reportItems.map((item) => (
+          </TableHeader>
+          <TableBody>
+            {data?.items.map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.title}</TableCell>
-                <TableCell className="max-w-md truncate">{item.summary}</TableCell>
-                <TableCell>
-                  {format(new Date(item.createdAt), "MMM d, yyyy")}
+                <TableCell className="truncate max-w-xs">
+                  {item.summary}
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/progress/${item.id}`)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/progress/${item.id}/edit`)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this report?")) {
-                          deleteMutation.mutate(item.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
+                <TableCell>{item.likes}</TableCell>
+                <TableCell>
+                  {item.created_at ? formatDate(item.created_at) : "N/A"}
+                </TableCell>
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEditingId(item.id)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-500 hover:text-red-600"
+                    onClick={() => setDeletingId(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
-            ))
+            ))}
+            {(!data?.items || data.items.length === 0) && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center h-24">
+                  No progress reports found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={!!editingId} onOpenChange={(open) => !open && setEditingId(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Progress Report</DialogTitle>
+          </DialogHeader>
+          {editingId && (
+            <ProgressForm
+              progressId={editingId}
+              onSuccess={() => setEditingId(null)}
+            />
           )}
-        </TableBody>
-      </Table>
-    </Card>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the progress report.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
-

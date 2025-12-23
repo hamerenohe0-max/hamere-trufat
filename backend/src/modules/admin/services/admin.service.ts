@@ -70,16 +70,16 @@ export class AdminService {
 
     return {
       news: {
-        published: news.items.filter((n) => n.status === 'published').length,
-        draft: news.items.filter((n) => n.status === 'draft').length,
+        published: news.items.filter((n: any) => n.status === 'published').length,
+        draft: news.items.filter((n: any) => n.status === 'draft').length,
       },
       articles: {
         published: articles.items.length,
         draft: 0,
       },
       events: {
-        upcoming: events.items.filter((e) => new Date(e.startDate) > new Date()).length,
-        past: events.items.filter((e) => new Date(e.startDate) <= new Date()).length,
+        upcoming: events.items.filter((e: any) => new Date(e.start_date) > new Date()).length,
+        past: events.items.filter((e: any) => new Date(e.start_date) <= new Date()).length,
       },
     };
   }

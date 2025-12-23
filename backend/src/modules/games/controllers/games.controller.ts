@@ -17,7 +17,7 @@ export class GamesController {
 
   @Post('scores')
   @UseGuards(JwtAuthGuard)
-  saveScore(@Body() body: { game: string; score: number; metadata?: Record<string, unknown> }, @CurrentUser() user: any) {
+  saveScore(@Body() body: { game: 'trivia' | 'puzzle' | 'saint' | 'memory'; score: number; metadata?: Record<string, unknown> }, @CurrentUser() user: any) {
     return this.gamesService.saveScore(user.id, body.game, body.score, body.metadata);
   }
 

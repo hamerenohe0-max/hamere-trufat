@@ -1,36 +1,50 @@
 import { apiFetch } from "@/lib/api";
 
-export interface ProgressReport {
+export interface ProgressCustomEvent {
+  date: string;
+  title: string;
+  description: string;
+}
+
+export interface ProgressItem {
   id: string;
+  title: string;
+  summary: string;
+  pdf_url?: string;
+  before_image?: string;
+  after_image?: string;
+  media_gallery: string[];
+  timeline: ProgressCustomEvent[];
+  likes: number;
+  comments_count: number;
+  created_at: string;
+}
+
+export interface CreateProgressDto {
   title: string;
   summary: string;
   pdfUrl?: string;
   beforeImage?: string;
   afterImage?: string;
-  timeline: Array<{
-    label: string;
-    description: string;
-    date: string;
-  }>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  limit: number;
-  offset: number;
+  mediaGallery?: string[];
+  timeline?: ProgressCustomEvent[];
 }
 
 export const progressApi = {
-  list: () => apiFetch<PaginatedResponse<ProgressReport>>("/admin/progress"),
-  get: (id: string) => apiFetch<ProgressReport>(`/admin/progress/${id}`),
-  create: (data: Omit<ProgressReport, "id" | "createdAt" | "updatedAt">) =>
-    apiFetch<ProgressReport>("/admin/progress", { method: "POST", body: data }),
-  update: (id: string, data: Partial<ProgressReport>) =>
-    apiFetch<ProgressReport>(`/admin/progress/${id}`, { method: "PATCH", body: data }),
+  list: () => apiFetch<{ items: ProgressItem[] }>("/progress"),
+  get: (id: string) => apiFetch<ProgressItem>(`/progress/${id}`),
+  create: (data: CreateProgressDto) =>
+    apiFetch<ProgressItem>("/progress", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<CreateProgressDto>) =>
+    apiFetch<ProgressItem>(`/progress/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
   delete: (id: string) =>
-    apiFetch<void>(`/admin/progress/${id}`, { method: "DELETE" }),
+    apiFetch<void>(`/progress/${id}`, {
+      method: "DELETE",
+    }),
 };
-

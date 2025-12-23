@@ -30,16 +30,6 @@ export default function ProfilePage() {
     queryKey: ["admin-profile"],
     queryFn: authClient.profile,
     enabled: !!tokens,
-    onSuccess: (profile) => {
-      setSession({ user: profile, tokens: tokens! });
-      setForm({
-        name: profile.name,
-        bio: profile.profile?.bio ?? "",
-        region: profile.profile?.region ?? "",
-        language: profile.profile?.language ?? "",
-        phone: profile.profile?.phone ?? "",
-      });
-    },
   });
 
   const mutation = useMutation({
@@ -56,6 +46,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (profileQuery.data) {
+      if (tokens) {
+        setSession({ user: profileQuery.data, tokens });
+      }
       const profile = profileQuery.data.profile ?? {};
       setForm({
         name: profileQuery.data.name,
@@ -65,7 +58,7 @@ export default function ProfilePage() {
         phone: profile.phone ?? "",
       });
     }
-  }, [profileQuery.data]);
+  }, [profileQuery.data, tokens, setSession]);
 
   return (
     <AuthGate roles={["admin", "publisher"]}>

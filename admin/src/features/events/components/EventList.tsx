@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { eventsApi } from "../services/events.api";
+import { useState } from "react";
+import { useEventsList, useDeleteEvent } from "../hooks/useEvents";
 import {
   Table,
   TableBody,
@@ -11,116 +11,130 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Edit, Trash2, Eye } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { Edit2, Trash2 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+import { EventForm } from "./EventForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export function EventList() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const { data: events, isLoading } = useQuery({
-    queryKey: ["admin-events"],
-    queryFn: eventsApi.list,
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: eventsApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
-    },
-  });
-
-  // Mock data
-  const mockEvents = [
-    {
-      id: "1",
-      name: "የኑ ከዚህ ዓለም እንውጣ የኅዳር ወር ጉባኤ",
-      startDate: new Date().toISOString(),
-      location: "ሐመረ ኖኅ አዳራሽ",
-      featured: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
-
-  const eventItems = events?.items || mockEvents;
+  const { data, isLoading } = useEventsList();
+  const deleteMutation = useDeleteEvent();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading events...</div>;
+    return <div>Loading events...</div>;
   }
 
+  const handleDelete = async () => {
+    if (deletingId) {
+      try {
+        await deleteMutation.mutateAsync(deletingId);
+        toast.success("Event deleted successfully");
+        setDeletingId(null);
+      } catch (error) {
+        toast.error("Failed to delete event");
+        console.error(error);
+      }
+    }
+  };
+
   return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Event Name</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead>Featured</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {eventItems.length === 0 ? (
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                No events found. Create your first event!
-              </TableCell>
+              <TableHead>Name</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Start Date</TableHead>
+              <TableHead>Featured</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ) : (
-            eventItems.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.name}</TableCell>
+          </TableHeader>
+          <TableBody>
+            {data?.items.map((event) => (
+              <TableRow key={event.id}>
+                <TableCell className="font-medium">{event.name}</TableCell>
+                <TableCell>{event.location}</TableCell>
                 <TableCell>
-                  {format(new Date(item.startDate), "MMM d, yyyy HH:mm")}
+                  {event.start_date ? formatDate(event.start_date) : "N/A"}
                 </TableCell>
-                <TableCell>{item.location}</TableCell>
-                <TableCell>
-                  {item.featured ? (
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                      Featured
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/events/${item.id}`)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/events/${item.id}/edit`)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this event?")) {
-                          deleteMutation.mutate(item.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
+                <TableCell>{event.featured ? "Yes" : "No"}</TableCell>
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEditingId(event.id)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-500 hover:text-red-600"
+                    onClick={() => setDeletingId(event.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
-            ))
+            ))}
+            {(!data?.items || data.items.length === 0) && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center h-24">
+                  No events found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={!!editingId} onOpenChange={(open) => !open && setEditingId(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+          </DialogHeader>
+          {editingId && (
+            <EventForm
+              eventId={editingId}
+              onSuccess={() => setEditingId(null)}
+            />
           )}
-        </TableBody>
-      </Table>
-    </Card>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the event.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
-

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
@@ -23,6 +22,7 @@ import { SyncModule } from './modules/sync/sync.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { MediaModule } from './modules/media/media.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SupabaseModule } from './common/supabase/supabase.module';
 
 @Module({
   imports: [
@@ -34,9 +34,7 @@ import { AdminModule } from './modules/admin/admin.module';
         limit: 100, // 100 requests per minute
       },
     ]),
-    MongooseModule.forRoot(
-      process.env.MONGODB_URI ?? 'mongodb://localhost:27017/hamere-trufat',
-    ),
+    SupabaseModule,
     AuthModule,
     UsersModule,
     SubmissionsModule,

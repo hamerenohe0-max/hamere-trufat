@@ -34,7 +34,7 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const user = await this.usersService.create({
+    let user = await this.usersService.create({
       name: registerDto.name,
       email: registerDto.email,
       password: registerDto.password,
@@ -49,10 +49,11 @@ export class AuthService {
 
     if (otpRequired) {
       const code = this.generateOtp();
-      user.otpCode = code;
-      user.otpExpiresAt = this.futureDateMinutes(10);
-      user.status = 'pending';
-      await user.save();
+      user = await this.usersService.update(user.id, {
+        otp_code: code,
+        otp_expires_at: this.futureDateMinutes(10).toISOString(),
+        status: 'pending',
+      });
 
       return {
         user: this.usersService.toSafeUser(user),
@@ -61,8 +62,7 @@ export class AuthService {
       };
     }
 
-    user.status = 'active';
-    await user.save();
+    user = await this.usersService.update(user.id, { status: 'active' });
 
     if (registerDto.device) {
       await this.recordDevice(user.id, registerDto.device);
@@ -79,24 +79,25 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
-    const user = await this.usersService.findByEmail(dto.email);
-    if (!user || !user.otpCode || !user.otpExpiresAt) {
+    let user = await this.usersService.findByEmail(dto.email);
+    if (!user || !user.otp_code || !user.otp_expires_at) {
       throw new BadRequestException('No OTP pending verification');
     }
 
-    if (user.otpExpiresAt.getTime() < Date.now()) {
+    if (new Date(user.otp_expires_at).getTime() < Date.now()) {
       throw new BadRequestException('OTP expired');
     }
 
-    if (user.otpCode !== dto.code) {
+    if (user.otp_code !== dto.code) {
       throw new BadRequestException('Invalid OTP');
     }
 
-    user.otpCode = null;
-    user.otpExpiresAt = null;
-    user.otpVerifiedAt = new Date();
-    user.status = 'active';
-    await user.save();
+    user = await this.usersService.update(user.id, {
+      otp_code: null,
+      otp_expires_at: null,
+      otp_verified_at: new Date().toISOString(),
+      status: 'active',
+    });
 
     return { success: true };
   }
@@ -112,13 +113,13 @@ export class AuthService {
 
     const matches = await bcrypt.compare(
       loginDto.password,
-      user.passwordHash,
+      user.password_hash,
     );
     if (!matches) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (user.otpCode) {
+    if (user.otp_code) {
       throw new BadRequestException('OTP verification pending');
     }
 
@@ -162,11 +163,11 @@ export class AuthService {
     }
 
     const user = await this.usersService.findById(payload.sub);
-    if (!user || !user.refreshTokenHash) {
+    if (!user || !user.refresh_token_hash) {
       throw new UnauthorizedException('Refresh not allowed');
     }
 
-    const valid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    const valid = await bcrypt.compare(refreshToken, user.refresh_token_hash);
     if (!valid) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -193,31 +194,34 @@ export class AuthService {
     }
 
     const code = this.generateOtp();
-    user.otpCode = code;
-    user.otpExpiresAt = this.futureDateMinutes(10);
-    await user.save();
+    await this.usersService.update(user.id, {
+      otp_code: code,
+      otp_expires_at: this.futureDateMinutes(10).toISOString(),
+    });
 
     return { success: true };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
     const user = await this.usersService.findByEmail(dto.email);
-    if (!user || !user.otpCode) {
+    if (!user || !user.otp_code) {
       throw new BadRequestException('Reset not requested');
     }
 
-    if (user.otpCode !== dto.code) {
+    if (user.otp_code !== dto.code) {
       throw new BadRequestException('Invalid code');
     }
 
-    if (user.otpExpiresAt && user.otpExpiresAt.getTime() < Date.now()) {
+    if (user.otp_expires_at && new Date(user.otp_expires_at).getTime() < Date.now()) {
       throw new BadRequestException('Code expired');
     }
 
-    user.passwordHash = await bcrypt.hash(dto.newPassword, 12);
-    user.otpCode = null;
-    user.otpExpiresAt = null;
-    await user.save();
+    const passwordHash = await bcrypt.hash(dto.newPassword, 12);
+    await this.usersService.update(user.id, {
+      password_hash: passwordHash,
+      otp_code: null,
+      otp_expires_at: null,
+    });
 
     return { success: true };
   }

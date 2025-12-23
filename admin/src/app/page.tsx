@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from "react";
+
 import { AuthGate } from "@/components/auth/auth-gate";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { DashboardStats } from "@/features/dashboard/components/DashboardStats";
@@ -12,15 +14,17 @@ export default function Home() {
   const setSession = useAuthStore((state) => state.setSession);
   const tokens = useAuthStore((state) => state.tokens);
 
-  useQuery({
+  const { data: profile } = useQuery({
     queryKey: ["admin-profile"],
     queryFn: authClient.profile,
     enabled: !!tokens,
-    onSuccess: (profile) => {
-      if (!tokens) return;
-      setSession({ user: profile, tokens });
-    },
   });
+
+  useEffect(() => {
+    if (profile && tokens) {
+      setSession({ user: profile, tokens });
+    }
+  }, [profile, tokens, setSession]);
 
   return (
     <AuthGate roles={["admin", "publisher"]}>

@@ -25,19 +25,16 @@ export const NewsComments = memo(({ comments, onSubmit }: Props) => {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.heading}>Comments</Text>
-      <FlatList
-        data={comments}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.comment}>
-            <Text style={styles.author}>{item.user.name}</Text>
+      {comments.length === 0 ? (
+        <Text style={styles.empty}>Be the first to comment.</Text>
+      ) : (
+        comments.map((item) => (
+          <View key={item.id} style={styles.comment}>
+            <Text style={styles.author}>{item.user?.name ?? 'Unknown User'}</Text>
             <Text style={styles.body}>{item.translatedBody ?? item.body}</Text>
           </View>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>Be the first to comment.</Text>
-        }
-      />
+        ))
+      )}
 
       <View style={styles.inputRow}>
         <TextInput

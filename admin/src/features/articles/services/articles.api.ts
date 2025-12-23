@@ -1,34 +1,46 @@
 import { apiFetch } from "@/lib/api";
 
-export interface Article {
+export interface ArticleItem {
   id: string;
   title: string;
   slug: string;
+  excerpt: string;
   content: string;
-  coverImage?: string;
-  authorId: string;
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  relatedEventIds: string[];
-  relatedFeastIds: string[];
+  cover_image?: string;
+  author_id: string;
+  published_at?: string;
+  created_at: string;
+  updated_at: string;
+  views: number;
 }
 
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  limit: number;
-  offset: number;
+export interface CreateArticleDto {
+  title: string;
+  excerpt: string;
+  content: string;
+  coverImage?: string;
+  keywords?: string[]; // Renamed from tags to match backend DTO
 }
 
 export const articlesApi = {
-  list: () => apiFetch<PaginatedResponse<Article>>("/admin/articles"),
-  get: (id: string) => apiFetch<Article>(`/admin/articles/${id}`),
-  create: (data: Omit<Article, "id" | "createdAt" | "updatedAt">) =>
-    apiFetch<Article>("/admin/articles", { method: "POST", body: data }),
-  update: (id: string, data: Partial<Article>) =>
-    apiFetch<Article>(`/admin/articles/${id}`, { method: "PATCH", body: data }),
+  list: () => apiFetch<{ items: ArticleItem[] }>("/articles"),
+  
+  get: (id: string) => apiFetch<ArticleItem>(`/articles/${id}`),
+  
+  create: (data: CreateArticleDto) =>
+    apiFetch<ArticleItem>("/articles", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+    
+  update: (id: string, data: Partial<CreateArticleDto>) =>
+    apiFetch<ArticleItem>(`/articles/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+    
   delete: (id: string) =>
-    apiFetch<void>(`/admin/articles/${id}`, { method: "DELETE" }),
+    apiFetch<void>(`/articles/${id}`, {
+      method: "DELETE",
+    }),
 };
-

@@ -29,7 +29,7 @@ export default function RegisterScreen() {
       const device = await buildDeviceContext();
       return authApi.register({
         ...form,
-        requireOtp: true,
+        requireOtp: false,
         device,
       });
     },

@@ -35,5 +35,9 @@ export class CreateArticleDto {
   @IsString()
   @IsOptional()
   audioUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  readingTime?: string;
 }
 

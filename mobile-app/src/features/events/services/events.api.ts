@@ -1,35 +1,45 @@
 import { apiFetch } from '../../../services/api';
 import { Event } from '../../../types/models';
-import { mockEvents } from '../../../data/mock-events';
 
-// Mock events API - will be replaced with real API later
-const mockReminders: Record<string, boolean> = {};
+interface EventsResponse {
+  items: any[];
+  total: number;
+}
 
 export const eventsApi = {
   list: async (): Promise<Event[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return mockEvents.map((e) => ({
-      ...e,
-      reminderEnabled: mockReminders[e.id] ?? false,
-    }));
+    const response = await apiFetch<EventsResponse>('/events');
+    return response.items.map(mapEventFromBackend);
   },
+
   detail: async (id: string): Promise<Event> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const event = mockEvents.find((e) => e.id === id);
-    if (!event) throw new Error('Event not found');
-    return {
-      ...event,
-      reminderEnabled: mockReminders[id] ?? false,
-    };
+    const data = await apiFetch<any>(`/events/${id}`);
+    return mapEventFromBackend(data);
   },
+
   reminder: async (
     id: string,
     enabled: boolean,
   ): Promise<{ reminderEnabled: boolean }> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    mockReminders[id] = enabled;
+    // Assuming endpoint for toggling reminder
+    // await apiFetch(`/events/${id}/reminder`, { method: 'POST', body: { enabled } });
     return { reminderEnabled: enabled };
   },
 };
 
-
+function mapEventFromBackend(data: any): Event {
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    startDate: data.start_date,
+    endDate: data.end_date,
+    location: data.location,
+    featured: data.featured,
+    flyerImages: data.flyer_images || [],
+    reminderEnabled: data.reminder_enabled,
+    coordinates: data.coordinates,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at || data.created_at,
+  };
+}

@@ -1,168 +1,253 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { News, NewsDocument } from '../schemas/news.schema';
-import { NewsComment, NewsCommentDocument } from '../schemas/news-comment.schema';
-import { NewsReaction, NewsReactionDocument } from '../schemas/news-reaction.schema';
-import { NewsBookmark, NewsBookmarkDocument } from '../schemas/news-bookmark.schema';
+import { SupabaseService } from '../../../common/supabase/supabase.service';
 import { CreateNewsDto } from '../dto/create-news.dto';
 import { UpdateNewsDto } from '../dto/update-news.dto';
 import { CreateCommentDto } from '../dto/create-comment.dto';
 
 @Injectable()
 export class NewsService {
-  constructor(
-    @InjectModel(News.name) private newsModel: Model<NewsDocument>,
-    @InjectModel(NewsComment.name) private commentModel: Model<NewsCommentDocument>,
-    @InjectModel(NewsReaction.name) private reactionModel: Model<NewsReactionDocument>,
-    @InjectModel(NewsBookmark.name) private bookmarkModel: Model<NewsBookmarkDocument>,
-  ) {}
+  constructor(private readonly supabase: SupabaseService) {}
 
-  async create(createNewsDto: CreateNewsDto, authorId: string): Promise<NewsDocument> {
-    const news = new this.newsModel({
-      ...createNewsDto,
-      authorId,
-      publishedAt: createNewsDto.status === 'published' ? new Date() : undefined,
-    });
-    return news.save();
+  async create(createNewsDto: CreateNewsDto, authorId: string): Promise<any> {
+    const { data, error } = await this.supabase.client
+      .from('news')
+      .insert({
+        title: createNewsDto.title,
+        summary: createNewsDto.summary,
+        body: createNewsDto.body,
+        tags: createNewsDto.tags,
+        cover_image: createNewsDto.coverImage,
+        status: createNewsDto.status,
+        scheduled_at: createNewsDto.scheduledAt,
+        author_id: authorId,
+        published_at: createNewsDto.status === 'published' ? new Date().toISOString() : null,
+      } as any)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
   }
 
   async findAll(filters?: { status?: string; authorId?: string; limit?: number; offset?: number }) {
-    const query: any = {};
-    if (filters?.status) query.status = filters.status;
-    if (filters?.authorId) query.authorId = filters.authorId;
+    let query = this.supabase.client
+      .from('news')
+      .select('*', { count: 'exact' });
+
+    if (filters?.status) query = query.eq('status', filters.status);
+    if (filters?.authorId) query = query.eq('author_id', filters.authorId);
 
     const limit = filters?.limit || 20;
     const offset = filters?.offset || 0;
 
-    const [items, total] = await Promise.all([
-      this.newsModel.find(query).sort({ createdAt: -1 }).limit(limit).skip(offset).exec(),
-      this.newsModel.countDocuments(query).exec(),
-    ]);
+    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
-    return { items, total, limit, offset };
+    const { data, count } = await query;
+
+    return { items: (data || []) as any[], total: count || 0, limit, offset };
   }
 
-  async findOne(id: string): Promise<NewsDocument> {
-    const news = await this.newsModel.findById(id).exec();
-    if (!news) {
+  async findOne(id: string): Promise<any> {
+    const { data: news, error } = await this.supabase.client
+      .from('news')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !news) {
       throw new NotFoundException(`News with ID ${id} not found`);
     }
-    news.views += 1;
-    await news.save();
+
+    // Increment views directly (fire and forget)
+    this.supabase.client
+      .from('news')
+      .update({ views: ((news as any).views || 0) + 1 } as any)
+      .eq('id', id);
+
     return news;
   }
 
-  async update(id: string, updateNewsDto: UpdateNewsDto, userId: string): Promise<NewsDocument> {
+  async update(id: string, updateNewsDto: UpdateNewsDto, userId: string): Promise<any> {
     const news = await this.findOne(id);
-    if (news.authorId !== userId) {
+    if (news.author_id !== userId) {
       throw new ForbiddenException('You can only update your own news');
     }
 
+    const updates: any = { ...updateNewsDto };
+    
     if (updateNewsDto.status === 'published' && news.status !== 'published') {
-      updateNewsDto.publishedAt = new Date().toISOString();
+      updates.published_at = new Date().toISOString();
     }
+    
+    // Map camelCase DTO to snake_case DB
+    if (updateNewsDto.coverImage) updates.cover_image = updateNewsDto.coverImage;
+    if (updateNewsDto.scheduledAt) updates.scheduled_at = updateNewsDto.scheduledAt;
+    delete updates.coverImage;
+    delete updates.scheduledAt;
 
-    Object.assign(news, updateNewsDto);
-    return news.save();
+    const { data, error } = await this.supabase.client
+      .from('news')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
   }
 
   async delete(id: string, userId: string, userRole: string): Promise<void> {
     const news = await this.findOne(id);
-    if (news.authorId !== userId && userRole !== 'admin') {
+    if (news.author_id !== userId && userRole !== 'admin') {
       throw new ForbiddenException('You can only delete your own news');
     }
-    await this.newsModel.findByIdAndDelete(id).exec();
+    
+    await this.supabase.client.from('news').delete().eq('id', id);
   }
 
-  async publish(id: string, userId: string): Promise<NewsDocument> {
+  async publish(id: string, userId: string): Promise<any> {
     const news = await this.findOne(id);
-    if (news.authorId !== userId) {
+    if (news.author_id !== userId) {
       throw new ForbiddenException('You can only publish your own news');
     }
-    news.status = 'published';
-    news.publishedAt = new Date();
-    return news.save();
+    
+    const { data } = await this.supabase.client
+      .from('news')
+      .update({
+        status: 'published',
+        published_at: new Date().toISOString(),
+      } as any)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    return data;
   }
 
-  async addComment(newsId: string, userId: string, createCommentDto: CreateCommentDto): Promise<NewsCommentDocument> {
-    const news = await this.findOne(newsId);
-    const comment = new this.commentModel({
-      newsId,
-      userId,
-      ...createCommentDto,
-    });
-    await comment.save();
-    news.commentsCount += 1;
-    await news.save();
+  async addComment(newsId: string, userId: string, createCommentDto: CreateCommentDto): Promise<any> {
+    await this.findOne(newsId); // Verify exists
+
+    const { data: comment, error } = await this.supabase.client
+      .from('news_comments')
+      .insert({
+        news_id: newsId,
+        user_id: userId,
+        body: createCommentDto.body,
+      } as any)
+      .select('*, user:users(id, name, profile)')
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    // Increment comments count
+    const { data: newsData } = await this.supabase.client.from('news').select('comments_count').eq('id', newsId).single() as any;
+    if (newsData) {
+      await this.supabase.client.from('news').update({ comments_count: (newsData.comments_count || 0) + 1 } as any).eq('id', newsId);
+    }
+
     return comment;
   }
 
   async getComments(newsId: string, limit = 20, offset = 0) {
-    const [items, total] = await Promise.all([
-      this.commentModel.find({ newsId }).sort({ createdAt: -1 }).limit(limit).skip(offset).exec(),
-      this.commentModel.countDocuments({ newsId }).exec(),
-    ]);
-    return { items, total, limit, offset };
+    const { data, count } = await this.supabase.client
+      .from('news_comments')
+      .select('*, user:users(id, name, profile)', { count: 'exact' })
+      .eq('news_id', newsId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    return { items: (data || []) as any[], total: count || 0, limit, offset };
   }
 
-  async toggleReaction(newsId: string, userId: string, reaction: 'like' | 'dislike'): Promise<NewsDocument> {
+  async toggleReaction(newsId: string, userId: string, reaction: 'like' | 'dislike'): Promise<any> {
     const news = await this.findOne(newsId);
-    const existing = await this.reactionModel.findOne({ newsId, userId }).exec();
+    
+    const { data: existing } = await this.supabase.client
+      .from('news_reactions')
+      .select('*')
+      .eq('news_id', newsId)
+      .eq('user_id', userId)
+      .single() as any;
+
+    let likes = news.likes || 0;
+    let dislikes = news.dislikes || 0;
 
     if (existing) {
       if (existing.reaction === reaction) {
         // Remove reaction
-        await this.reactionModel.findByIdAndDelete(existing._id).exec();
-        if (reaction === 'like') news.likes = Math.max(0, news.likes - 1);
-        else news.dislikes = Math.max(0, news.dislikes - 1);
+        await this.supabase.client.from('news_reactions').delete().eq('id', existing.id);
+        if (reaction === 'like') likes = Math.max(0, likes - 1);
+        else dislikes = Math.max(0, dislikes - 1);
       } else {
         // Change reaction
-        existing.reaction = reaction;
-        await existing.save();
+        await this.supabase.client.from('news_reactions').update({ reaction } as any).eq('id', existing.id);
         if (reaction === 'like') {
-          news.likes += 1;
-          news.dislikes = Math.max(0, news.dislikes - 1);
+          likes += 1;
+          dislikes = Math.max(0, dislikes - 1);
         } else {
-          news.dislikes += 1;
-          news.likes = Math.max(0, news.likes - 1);
+          dislikes += 1;
+          likes = Math.max(0, likes - 1);
         }
       }
     } else {
       // Add new reaction
-      await new this.reactionModel({ newsId, userId, reaction }).save();
-      if (reaction === 'like') news.likes += 1;
-      else news.dislikes += 1;
+      await this.supabase.client.from('news_reactions').insert({
+        news_id: newsId,
+        user_id: userId,
+        reaction,
+      } as any);
+      if (reaction === 'like') likes += 1;
+      else dislikes += 1;
     }
 
-    return news.save();
+    const { data: updated } = await this.supabase.client
+      .from('news')
+      .update({ likes, dislikes } as any)
+      .eq('id', newsId)
+      .select()
+      .single();
+
+    return updated;
   }
 
   async toggleBookmark(newsId: string, userId: string): Promise<{ bookmarked: boolean }> {
-    await this.findOne(newsId); // Verify news exists
-    const existing = await this.bookmarkModel.findOne({ newsId, userId }).exec();
+    await this.findOne(newsId);
+    
+    const { data: existing } = await this.supabase.client
+      .from('news_bookmarks')
+      .select('*')
+      .eq('news_id', newsId)
+      .eq('user_id', userId)
+      .single() as any;
 
     if (existing) {
-      await this.bookmarkModel.findByIdAndDelete(existing._id).exec();
+      await this.supabase.client.from('news_bookmarks').delete().eq('id', existing.id);
       return { bookmarked: false };
     } else {
-      await new this.bookmarkModel({ newsId, userId }).save();
+      await this.supabase.client.from('news_bookmarks').insert({ news_id: newsId, user_id: userId } as any);
       return { bookmarked: true };
     }
   }
 
   async getBookmarks(userId: string, limit = 20, offset = 0) {
-    const bookmarks = await this.bookmarkModel
-      .find({ userId })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .skip(offset)
-      .exec();
+    // Join bookmarks with news
+    const { data: bookmarks, count } = await this.supabase.client
+      .from('news_bookmarks')
+      .select('news_id', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1) as any;
 
-    const newsIds = bookmarks.map((b) => b.newsId);
-    const newsItems = await this.newsModel.find({ _id: { $in: newsIds } }).exec();
+    if (!bookmarks || bookmarks.length === 0) {
+      return { items: [], total: 0, limit, offset };
+    }
 
-    return { items: newsItems, total: bookmarks.length, limit, offset };
+    const newsIds = bookmarks.map((b: any) => b.news_id);
+    const { data: newsItems } = await this.supabase.client
+      .from('news')
+      .select('*')
+      .in('id', newsIds);
+
+    return { items: (newsItems || []) as any[], total: count || 0, limit, offset };
   }
 }
-

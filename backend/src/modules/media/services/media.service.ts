@@ -1,14 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Media, MediaDocument } from '../schemas/media.schema';
+import { SupabaseService } from '../../../common/supabase/supabase.service';
 import { v2 as cloudinary } from 'cloudinary';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MediaService {
   constructor(
-    @InjectModel(Media.name) private mediaModel: Model<MediaDocument>,
+    private readonly supabase: SupabaseService,
     private configService: ConfigService,
   ) {
     cloudinary.config({
@@ -18,7 +16,7 @@ export class MediaService {
     });
   }
 
-  async uploadFile(file: any, userId: string): Promise<MediaDocument> {
+  async uploadFile(file: any, userId: string): Promise<any> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -36,17 +34,27 @@ export class MediaService {
             return;
           }
 
-          const media = new this.mediaModel({
-            filename: file.originalname,
-            url: result.secure_url,
-            cloudinaryId: result.public_id,
-            type: this.getFileType(result.resource_type),
-            size: result.bytes,
-            mimeType: file.mimetype,
-            uploadedBy: userId,
-          });
+          const { data, error: dbError } = await this.supabase.client
+            .from('media')
+            .insert({
+              filename: file.originalname,
+              url: result.secure_url,
+              cloudinary_id: result.public_id,
+              type: this.getFileType(result.resource_type),
+              size: result.bytes,
+              mime_type: file.mimetype,
+              uploaded_by: userId,
+              usage_count: 0,
+            })
+            .select()
+            .single();
 
-          resolve(await media.save());
+          if (dbError) {
+            reject(new Error(dbError.message));
+            return;
+          }
+
+          resolve(data);
         },
       );
 
@@ -55,29 +63,36 @@ export class MediaService {
   }
 
   async deleteFile(id: string, userId: string): Promise<void> {
-    const media = await this.mediaModel.findById(id).exec();
-    if (!media) {
+    const { data: media, error } = await this.supabase.client
+      .from('media')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !media) {
       throw new Error('Media not found');
     }
 
-    if (media.uploadedBy !== userId) {
+    if (media.uploaded_by !== userId) {
       throw new Error('You can only delete your own media');
     }
 
-    await cloudinary.uploader.destroy(media.cloudinaryId);
-    await this.mediaModel.findByIdAndDelete(id).exec();
+    await cloudinary.uploader.destroy(media.cloudinary_id);
+    await this.supabase.client.from('media').delete().eq('id', id);
   }
 
   async findAll(userId?: string, limit = 50, offset = 0) {
-    const query: any = {};
-    if (userId) query.uploadedBy = userId;
+    let query = this.supabase.client
+      .from('media')
+      .select('*', { count: 'exact' });
 
-    const [items, total] = await Promise.all([
-      this.mediaModel.find(query).sort({ createdAt: -1 }).limit(limit).skip(offset).exec(),
-      this.mediaModel.countDocuments(query).exec(),
-    ]);
+    if (userId) query = query.eq('uploaded_by', userId);
 
-    return { items, total, limit, offset };
+    const { data, count } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    return { items: data || [], total: count || 0, limit, offset };
   }
 
   private getFileType(resourceType: string): 'image' | 'video' | 'document' | 'audio' {

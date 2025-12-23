@@ -1,47 +1,67 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { GameScore, GameScoreDocument } from '../schemas/game-score.schema';
+import { SupabaseService } from '../../../common/supabase/supabase.service';
+import { Database } from '../../../common/supabase/types';
+
+type GameScoreInsert = Database['public']['Tables']['game_scores']['Insert'];
 
 @Injectable()
 export class GamesService {
-  constructor(@InjectModel(GameScore.name) private gameScoreModel: Model<GameScoreDocument>) {}
+  constructor(private readonly supabase: SupabaseService) {}
 
-  async saveScore(userId: string, game: string, score: number, metadata?: Record<string, unknown>): Promise<GameScoreDocument> {
-    const gameScore = new this.gameScoreModel({
-      userId,
-      game,
-      score,
-      metadata: metadata || {},
-    });
-    return gameScore.save();
+  async saveScore(userId: string, game: 'trivia' | 'puzzle' | 'saint' | 'memory', score: number, metadata?: Record<string, unknown>): Promise<any> {
+    const { data, error } = await this.supabase.client
+      .from('game_scores')
+      .insert({
+        user_id: userId,
+        game,
+        score,
+        metadata: metadata || {},
+      } as any)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
   }
 
   async getUserScores(userId: string, game?: string, limit = 20) {
-    const query: any = { userId };
-    if (game) query.game = game;
+    let query = this.supabase.client
+      .from('game_scores')
+      .select('*')
+      .eq('user_id', userId);
 
-    return this.gameScoreModel
-      .find(query)
-      .sort({ score: -1, createdAt: -1 })
-      .limit(limit)
-      .exec();
+    if (game) query = query.eq('game', game);
+
+    const { data } = await query
+      .order('score', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    return data || [];
   }
 
   async getLeaderboard(game: string, limit = 10) {
-    return this.gameScoreModel
-      .find({ game })
-      .sort({ score: -1 })
-      .limit(limit)
-      .populate('userId', 'name email')
-      .exec();
+    const { data } = await this.supabase.client
+      .from('game_scores')
+      .select('*, users(name, email)')
+      .eq('game', game)
+      .order('score', { ascending: false })
+      .limit(limit);
+
+    return data || [];
   }
 
-  async getUserHighScore(userId: string, game: string): Promise<GameScoreDocument | null> {
-    return this.gameScoreModel
-      .findOne({ userId, game })
-      .sort({ score: -1 })
-      .exec();
+  async getUserHighScore(userId: string, game: string): Promise<any | null> {
+    const { data } = await this.supabase.client
+      .from('game_scores')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('game', game)
+      .order('score', { ascending: false })
+      .limit(1)
+      .single();
+
+    return data;
   }
 }
 

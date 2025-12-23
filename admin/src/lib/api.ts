@@ -5,8 +5,9 @@ import { useAuthStore } from "../store/auth-store";
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-interface ApiOptions extends RequestInit {
+interface ApiOptions extends Omit<RequestInit, "body"> {
   auth?: boolean;
+  body?: any;
 }
 
 export async function apiFetch<T>(
@@ -59,7 +60,17 @@ export async function apiFetch<T>(
     return {} as T;
   }
 
-  return (await response.json()) as T;
+  const text = await response.text();
+  if (!text) {
+    return {} as T;
+  }
+  
+  try {
+    return JSON.parse(text) as T;
+  } catch (e) {
+    console.error("Failed to parse JSON response:", text);
+    throw new Error("Invalid JSON response");
+  }
 }
 
 async function refreshSession() {

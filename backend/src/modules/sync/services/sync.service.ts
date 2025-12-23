@@ -1,14 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { OfflineCache, OfflineCacheDocument } from '../schemas/offline-cache.schema';
+import { SupabaseService } from '../../../common/supabase/supabase.service';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class SyncService {
-  constructor(
-    @InjectModel(OfflineCache.name) private cacheModel: Model<OfflineCacheDocument>,
-  ) {}
+  constructor(private readonly supabase: SupabaseService) {}
 
   async saveCache(
     userId: string,
@@ -17,45 +13,85 @@ export class SyncService {
     key: string,
     payload: Record<string, unknown>,
     expiresAt?: Date,
-  ): Promise<OfflineCacheDocument> {
+  ): Promise<any> {
     const checksum = this.calculateChecksum(payload);
     const version = Date.now();
 
-    const existing = await this.cacheModel.findOne({ userId, deviceId, entity, key }).exec();
+    const { data: existing } = await this.supabase.client
+      .from('offline_cache')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('device_id', deviceId)
+      .eq('entity', entity)
+      .eq('key', key)
+      .single();
+
     if (existing) {
-      existing.payload = payload;
-      existing.checksum = checksum;
-      existing.version = version;
-      existing.expiresAt = expiresAt;
-      return existing.save();
+      const { data } = await this.supabase.client
+        .from('offline_cache')
+        .update({
+          payload: payload as any,
+          checksum,
+          version,
+          expires_at: expiresAt ? expiresAt.toISOString() : null,
+        } as any)
+        .eq('id', (existing as any).id)
+        .select()
+        .single();
+      return data;
     }
 
-    const cache = new this.cacheModel({
-      userId,
-      deviceId,
-      entity,
-      key,
-      payload,
-      checksum,
-      version,
-      expiresAt,
-    });
+    const { data } = await this.supabase.client
+      .from('offline_cache')
+      .insert({
+        user_id: userId,
+        device_id: deviceId,
+        entity,
+        key,
+        payload: payload as any,
+        checksum,
+        version,
+        expires_at: expiresAt ? expiresAt.toISOString() : null,
+      } as any)
+      .select()
+      .single();
 
-    return cache.save();
+    return data;
   }
 
-  async getCache(userId: string, deviceId: string, entity: string, key: string): Promise<OfflineCacheDocument | null> {
-    return this.cacheModel.findOne({ userId, deviceId, entity, key }).exec();
+  async getCache(userId: string, deviceId: string, entity: string, key: string): Promise<any | null> {
+    const { data } = await this.supabase.client
+      .from('offline_cache')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('device_id', deviceId)
+      .eq('entity', entity)
+      .eq('key', key)
+      .single();
+    return data;
   }
 
   async getAllCache(userId: string, deviceId: string, entity?: string) {
-    const query: any = { userId, deviceId };
-    if (entity) query.entity = entity;
-    return this.cacheModel.find(query).sort({ createdAt: -1 }).exec();
+    let query = this.supabase.client
+      .from('offline_cache')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('device_id', deviceId);
+
+    if (entity) query = query.eq('entity', entity);
+
+    const { data } = await query.order('created_at', { ascending: false });
+    return data || [];
   }
 
   async deleteCache(userId: string, deviceId: string, entity: string, key: string): Promise<void> {
-    await this.cacheModel.deleteOne({ userId, deviceId, entity, key }).exec();
+    await this.supabase.client
+      .from('offline_cache')
+      .delete()
+      .eq('user_id', userId)
+      .eq('device_id', deviceId)
+      .eq('entity', entity)
+      .eq('key', key);
   }
 
   async syncData(userId: string, deviceId: string, syncData: Array<{

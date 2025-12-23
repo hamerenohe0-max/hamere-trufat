@@ -1,24 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Notification, NotificationDocument } from '../schemas/notification.schema';
+import { SupabaseService } from '../../../common/supabase/supabase.service';
 import { UsersService } from '../../users/services/users.service';
 
 @Injectable()
 export class NotificationsService {
   constructor(
-    @InjectModel(Notification.name) private notificationModel: Model<NotificationDocument>,
+    private readonly supabase: SupabaseService,
     private usersService: UsersService,
   ) {}
 
   async create(createNotificationDto: {
-    type: Notification['type'];
+    type: 'assignment' | 'submission' | 'news' | 'system';
     title: string;
     body: string;
     targetUserIds?: string[];
     targetRole?: 'all' | 'user' | 'publisher' | 'admin';
     metadata?: Record<string, unknown>;
-  }): Promise<NotificationDocument> {
+  }): Promise<any> {
     let targetUserIds: string[] = [];
 
     if (createNotificationDto.targetUserIds) {
@@ -26,61 +24,87 @@ export class NotificationsService {
     } else if (createNotificationDto.targetRole) {
       // Get user IDs by role
       const users = await this.usersService.findByRole(createNotificationDto.targetRole === 'all' ? undefined : createNotificationDto.targetRole);
-      targetUserIds = users.map((u) => u._id.toString());
+      targetUserIds = users.map((u: any) => u.id);
     }
 
-    const notification = new this.notificationModel({
-      type: createNotificationDto.type,
-      title: createNotificationDto.title,
-      body: createNotificationDto.body,
-      targetUserIds,
-      targetRole: createNotificationDto.targetRole,
-      metadata: createNotificationDto.metadata || {},
-      sentAt: new Date(),
-      sentCount: targetUserIds.length,
-    });
+    const { data, error } = await this.supabase.client
+      .from('notifications' as any)
+      .insert({
+        type: createNotificationDto.type,
+        title: createNotificationDto.title,
+        body: createNotificationDto.body,
+        target_user_ids: targetUserIds,
+        target_role: createNotificationDto.targetRole,
+        metadata: createNotificationDto.metadata || {},
+        sent_at: new Date().toISOString(),
+        sent_count: targetUserIds.length,
+        read_count: 0,
+        read_by_user_ids: [],
+      })
+      .select()
+      .single();
 
-    return notification.save();
+    if (error) throw new Error(error.message);
+    return data;
   }
 
   async findAll(filters?: { userId?: string; limit?: number; offset?: number }) {
-    const query: any = {};
+    let query = this.supabase.client
+      .from('notifications' as any)
+      .select('*', { count: 'exact' });
+
     if (filters?.userId) {
-      query.targetUserIds = filters.userId;
+      query = query.contains('target_user_ids', [filters.userId]);
     }
 
     const limit = filters?.limit || 20;
     const offset = filters?.offset || 0;
 
-    const [items, total] = await Promise.all([
-      this.notificationModel.find(query).sort({ createdAt: -1 }).limit(limit).skip(offset).exec(),
-      this.notificationModel.countDocuments(query).exec(),
-    ]);
+    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
-    return { items, total, limit, offset };
+    const { data, count } = await query;
+
+    return { items: data || [], total: count || 0, limit, offset };
   }
 
-  async findOne(id: string): Promise<NotificationDocument> {
-    const notification = await this.notificationModel.findById(id).exec();
-    if (!notification) {
+  async findOne(id: string): Promise<any> {
+    const { data: notification, error } = await this.supabase.client
+      .from('notifications' as any)
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !notification) {
       throw new NotFoundException(`Notification with ID ${id} not found`);
     }
     return notification;
   }
 
-  async markAsRead(id: string, userId: string): Promise<NotificationDocument> {
+  async markAsRead(id: string, userId: string): Promise<any> {
     const notification = await this.findOne(id);
-    if (!notification.readByUserIds.includes(userId)) {
-      notification.readByUserIds.push(userId);
-      notification.readCount += 1;
-      await notification.save();
+    
+    const readByUserIds = notification.read_by_user_ids || [];
+    if (!readByUserIds.includes(userId)) {
+      readByUserIds.push(userId);
+      
+      const { data } = await this.supabase.client
+        .from('notifications' as any)
+        .update({
+          read_by_user_ids: readByUserIds,
+          read_count: notification.read_count + 1,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+        
+      return data;
     }
     return notification;
   }
 
   async delete(id: string): Promise<void> {
     await this.findOne(id);
-    await this.notificationModel.findByIdAndDelete(id).exec();
+    await this.supabase.client.from('notifications' as any).delete().eq('id', id);
   }
 }
 
