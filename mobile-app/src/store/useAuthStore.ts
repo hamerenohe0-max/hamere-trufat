@@ -65,5 +65,5 @@ export const useAuthStore = create<AuthState>()(
 );
 
 export const selectIsAuthenticated = (state: AuthState) =>
-  !!state.tokens?.accessToken && !!state.user;
+  !!state.tokens?.accessToken && (!!state.user || state.guest);
 

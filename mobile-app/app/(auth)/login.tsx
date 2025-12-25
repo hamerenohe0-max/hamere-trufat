@@ -12,6 +12,7 @@ import { useMutation } from '@tanstack/react-query';
 import { authApi } from '../../src/services/auth';
 import { buildDeviceContext } from '../../src/services/device';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { colors } from '../../src/config/colors';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -42,8 +43,12 @@ export default function LoginScreen() {
   const guestMutation = useMutation({
     mutationFn: authApi.guest,
     onSuccess: (response) => {
+      clearSession(); // Clear any existing session first
       startGuestSession(response.tokens);
       router.replace('/(protected)/home');
+    },
+    onError: (error) => {
+      console.error('Guest session error:', error);
     },
   });
 
@@ -73,9 +78,10 @@ export default function LoginScreen() {
           style={styles.input}
         />
 
-        {mutation.isError && (
+        {(mutation.isError || guestMutation.isError) && (
           <Text style={styles.errorText}>
-            {(mutation.error as Error).message ?? 'Login failed'}
+            {((mutation.error || guestMutation.error) as Error)?.message ?? 
+              (mutation.isError ? 'Login failed' : 'Guest session failed')}
           </Text>
         )}
 
@@ -95,11 +101,15 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => guestMutation.mutate()}
+          style={[styles.secondaryButton, guestMutation.isPending && styles.buttonDisabled]}
+          onPress={() => {
+            clearSession(); // Clear any existing session before starting guest
+            guestMutation.mutate();
+          }}
+          disabled={guestMutation.isPending}
         >
           {guestMutation.isPending ? (
-            <ActivityIndicator color="#2563eb" />
+            <ActivityIndicator color={colors.primary.main} />
           ) : (
             <Text style={styles.secondaryText}>Continue as Guest</Text>
           )}
@@ -154,7 +164,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary.main,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -175,7 +185,7 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5f5',
   },
   secondaryText: {
-    color: '#2563eb',
+    color: colors.primary.main,
     fontWeight: '600',
   },
   links: {
@@ -184,7 +194,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   link: {
-    color: '#2563eb',
+    color: colors.primary.main,
     fontWeight: '600',
   },
   errorText: {

@@ -6,6 +6,8 @@ export interface NewsItem {
   summary: string;
   body: string;
   tags: string[];
+  images?: string[];
+  coverImage?: string; // For backward compatibility
   authorId: string;
   publishedAt?: string;
   status: "draft" | "scheduled" | "published";

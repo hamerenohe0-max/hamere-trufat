@@ -7,8 +7,30 @@ const mockReminders: Record<string, boolean> = {};
 
 export const readingsApi = {
   getByDate: async (date: string): Promise<DailyReading> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    // Find reading for date or use closest one
+    // Try to fetch from API first with timeout, fallback to mock if it fails
+    try {
+      // Use Promise.race to add a timeout
+      const apiCall = apiFetch<DailyReading>(`/readings/date/${date}`, {
+        method: 'GET',
+        auth: false, // Readings are public
+      });
+      
+      const timeout = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('API timeout')), 2000) // 2 second timeout
+      );
+      
+      const response = await Promise.race([apiCall, timeout]);
+      
+      // Transform backend response to match DailyReading format if needed
+      if (response && response.gospel) {
+        return response;
+      }
+    } catch (error) {
+      // Fallback to mock data if API fails or times out
+      console.warn('API reading not available, using mock data:', error);
+    }
+    
+    // Use mock data as fallback (instant, no delay)
     let reading = mockReadings.find((r) => r.date === date);
     if (!reading && mockReadings.length > 0) {
       // Use the reading with the closest date
@@ -50,7 +72,17 @@ export const readingsApi = {
     date: string,
     enabled: boolean,
   ): Promise<{ reminderEnabled: boolean }> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    // Try API first, fallback to local storage
+    try {
+      const response = await apiFetch<{ reminderEnabled: boolean }>(`/readings/date/${date}/reminder`, {
+        method: 'POST',
+        body: { enabled },
+      });
+      return response;
+    } catch (error) {
+      // Fallback to local mock
+      console.warn('API reminder not available, using local storage:', error);
+    }
     mockReminders[date] = enabled;
     return { reminderEnabled: enabled };
   },

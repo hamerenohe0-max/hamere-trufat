@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, ArrayMaxSize } from 'class-validator';
 
 export class CreateArticleDto {
   @IsString()
@@ -15,7 +15,13 @@ export class CreateArticleDto {
 
   @IsString()
   @IsOptional()
-  coverImage?: string;
+  coverImage?: string; // Keep for backward compatibility
+
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(4, { message: 'Maximum 4 images allowed' })
+  @IsOptional()
+  images?: string[]; // Up to 4 images
 
   @IsArray()
   @IsString({ each: true })

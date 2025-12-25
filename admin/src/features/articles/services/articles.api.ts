@@ -7,6 +7,7 @@ export interface ArticleItem {
   excerpt: string;
   content: string;
   cover_image?: string;
+  images?: string[];
   author_id: string;
   published_at?: string;
   created_at: string;

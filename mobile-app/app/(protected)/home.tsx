@@ -9,35 +9,44 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNewsList } from '../../src/features/news/hooks/useNews';
 import { useEvents } from '../../src/features/events/hooks/useEvents';
 import { useDailyReading } from '../../src/features/readings/hooks/useDailyReading';
+import { useArticlesList } from '../../src/features/articles/hooks/useArticles';
+import { colors } from '../../src/config/colors';
 // import { Ionicons } from '@expo/vector-icons'; // Assuming standard expo vector icons
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   
+  // Get today's date in YYYY-MM-DD format
+  const today = new Date().toISOString().split('T')[0];
+  
   const newsQuery = useNewsList();
   const eventsQuery = useEvents();
-  const readingQuery = useDailyReading();
+  const articlesQuery = useArticlesList();
+  const readingQuery = useDailyReading(today);
 
   const onRefresh = () => {
     newsQuery.refetch();
     eventsQuery.refetch();
+    articlesQuery.refetch();
     readingQuery.refetch();
   };
 
-  const isLoading = newsQuery.isLoading || eventsQuery.isLoading || readingQuery.isLoading;
+  const isLoading = newsQuery.isLoading || eventsQuery.isLoading || articlesQuery.isLoading || readingQuery.isLoading;
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
-      }
-    >
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+        }
+      >
       {/* Header Section */}
       <View style={styles.header}>
         <View>
@@ -112,6 +121,52 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
+      {/* Latest Articles Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Latest Articles</Text>
+          <Link href="/(protected)/articles" asChild>
+            <TouchableOpacity>
+              <Text style={styles.viewMore}>View All</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+        
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+          {articlesQuery.data?.slice(0, 5).map((article) => {
+            const coverImage = (article.images && article.images.length > 0) 
+              ? article.images[0] 
+              : article.coverImage;
+            
+            return (
+              <Link key={article.id} href={`/(protected)/articles/${article.id}`} asChild>
+                <TouchableOpacity style={styles.articleCard}>
+                  {/* Article cover image */}
+                  {coverImage ? (
+                    <Image 
+                      source={{ uri: coverImage }} 
+                      style={styles.articleImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.articleImagePlaceholder} />
+                  )}
+                  <View style={styles.articleContent}>
+                    <Text style={styles.articleTitle} numberOfLines={2}>{article.title}</Text>
+                    <Text style={styles.articleExcerpt} numberOfLines={2}>
+                      {article.excerpt}
+                    </Text>
+                    <Text style={styles.articleMeta}>
+                      {article.author?.name ?? 'Hamere Trufat'} • {article.readingTime}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </Link>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       {/* Upcoming Events Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -141,14 +196,15 @@ export default function HomeScreen() {
         ))}
       </View>
 
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: 24,
-    paddingTop: 60,
+    paddingTop: 16,
     backgroundColor: '#f8fafc',
     gap: 32,
     paddingBottom: 40,
@@ -193,7 +249,7 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   viewMore: {
-    color: '#2563eb',
+    color: colors.primary.main,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -202,7 +258,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 24,
-    shadowColor: '#2563eb',
+    shadowColor: colors.primary.main,
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 20,
@@ -215,7 +271,7 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   readingRef: {
-    color: '#2563eb',
+    color: colors.primary.main,
     fontWeight: '600',
     fontSize: 14,
     marginBottom: 4,
@@ -282,7 +338,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   eventDateBox: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primary.lighter + '20', // 20% opacity
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -291,12 +347,12 @@ const styles = StyleSheet.create({
   eventDay: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2563eb',
+    color: colors.primary.main,
   },
   eventMonth: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563eb',
+    color: colors.primary.main,
     textTransform: 'uppercase',
   },
   eventDetails: {
@@ -311,5 +367,47 @@ const styles = StyleSheet.create({
   eventLocation: {
     fontSize: 14,
     color: '#64748b',
+  },
+  // Articles
+  articleCard: {
+    width: 280,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  articleImage: {
+    width: '100%',
+    height: 140,
+    backgroundColor: '#e2e8f0',
+  },
+  articleImagePlaceholder: {
+    width: '100%',
+    height: 140,
+    backgroundColor: '#e2e8f0',
+  },
+  articleContent: {
+    padding: 16,
+    gap: 8,
+  },
+  articleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0f172a',
+    lineHeight: 22,
+  },
+  articleExcerpt: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 20,
+  },
+  articleMeta: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 4,
   },
 });

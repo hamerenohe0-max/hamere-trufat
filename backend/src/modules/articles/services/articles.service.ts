@@ -10,6 +10,9 @@ export class ArticlesService {
   async create(createArticleDto: CreateArticleDto, authorId: string): Promise<any> {
     const slug = slugify(createArticleDto.title, { lower: true, strict: true });
     
+    // Use images array if provided, otherwise fall back to coverImage for backward compatibility
+    const images = createArticleDto.images || (createArticleDto.coverImage ? [createArticleDto.coverImage] : []);
+    
     const { data, error } = await this.supabase.client
       .from('articles')
       .insert({
@@ -17,7 +20,8 @@ export class ArticlesService {
         slug,
         content: createArticleDto.content,
         excerpt: createArticleDto.excerpt,
-        cover_image: createArticleDto.coverImage,
+        images: images,
+        cover_image: createArticleDto.coverImage || (images.length > 0 ? images[0] : null), // Keep for backward compatibility
         author_id: authorId,
         published_at: new Date().toISOString(),
         related_event_ids: createArticleDto.relatedEventIds || [],
@@ -36,7 +40,7 @@ export class ArticlesService {
   async findAll(filters?: { authorId?: string; limit?: number; offset?: number }) {
     let query = this.supabase.client
       .from('articles')
-      .select('*', { count: 'exact' });
+      .select('*, author:users(id, name, profile, role)', { count: 'exact' });
 
     if (filters?.authorId) query = query.eq('author_id', filters.authorId);
 
@@ -53,7 +57,7 @@ export class ArticlesService {
   async findOne(id: string): Promise<any> {
     const { data: article, error } = await this.supabase.client
       .from('articles')
-      .select('*')
+      .select('*, author:users(id, name, profile, role)')
       .eq('id', id)
       .single();
 
@@ -73,7 +77,7 @@ export class ArticlesService {
   async findBySlug(slug: string): Promise<any> {
     const { data: article, error } = await this.supabase.client
       .from('articles')
-      .select('*')
+      .select('*, author:users(id, name, profile, role)')
       .eq('slug', slug)
       .single();
 
@@ -102,8 +106,18 @@ export class ArticlesService {
       updates.slug = slugify(updateDto.title, { lower: true, strict: true });
     }
 
+    // Handle images array
+    if (updateDto.images !== undefined) {
+      updates.images = updateDto.images;
+      // Also update cover_image to first image for backward compatibility
+      updates.cover_image = updateDto.images.length > 0 ? updateDto.images[0] : null;
+    } else if (updateDto.coverImage !== undefined) {
+      // If only coverImage is provided, convert to images array
+      updates.images = updateDto.coverImage ? [updateDto.coverImage] : [];
+      updates.cover_image = updateDto.coverImage;
+    }
+    
     // Map camelCase to snake_case
-    if (updateDto.coverImage) updates.cover_image = updateDto.coverImage;
     if (updateDto.relatedEventIds) updates.related_event_ids = updateDto.relatedEventIds;
     if (updateDto.relatedFeastIds) updates.related_feast_ids = updateDto.relatedFeastIds;
     if (updateDto.audioUrl) updates.audio_url = updateDto.audioUrl;
@@ -177,7 +191,7 @@ export class ArticlesService {
   async findByAuthor(authorId: string, limit = 20, offset = 0) {
     const { data, count } = await this.supabase.client
       .from('articles')
-      .select('*', { count: 'exact' })
+      .select('*, author:users!articles_author_id_fkey(id, name, profile, role)', { count: 'exact' })
       .eq('author_id', authorId)
       .order('published_at', { ascending: false })
       .range(offset, offset + limit - 1);

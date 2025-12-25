@@ -8,19 +8,22 @@ import {
   Delete,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { AdminService } from '../services/admin.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { NewsService } from '../../news/services/news.service';
+import { MediaService } from '../../media/services/media.service';
 import { ArticlesService } from '../../articles/services/articles.service';
 import { EventsService } from '../../events/services/events.service';
 import { FeastsService } from '../../feasts/services/feasts.service';
 import { ProgressService } from '../../progress/services/progress.service';
 import { UsersService } from '../../users/services/users.service';
 import { NotificationsService } from '../../notifications/services/notifications.service';
-import { MediaService } from '../../media/services/media.service';
 import { RolesService } from '../../roles/services/roles.service';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
@@ -66,14 +69,121 @@ export class AdminController {
     });
   }
 
+  @Get('news/:id')
+  getNewsById(@Param('id') id: string) {
+    return this.newsService.findOne(id);
+  }
+
   @Post('news')
-  createNews(@Body() createNewsDto: any, @CurrentUser() user: any) {
-    return this.newsService.create(createNewsDto, user.id);
+  @UseInterceptors(FilesInterceptor('images', 4))
+  async createNews(
+    @Body() createNewsDto: any,
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser() user: any,
+  ) {
+    // Parse tags if it's a JSON string
+    let tags = createNewsDto.tags;
+    if (typeof tags === 'string') {
+      try {
+        tags = JSON.parse(tags);
+      } catch {
+        // If not JSON, treat as comma-separated string
+        tags = tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+      }
+    }
+
+    // Upload images if provided
+    let imageUrls: string[] = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        try {
+          const uploaded = await this.mediaService.uploadFile(file, user.id);
+          imageUrls.push(uploaded.url);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+          // Continue with other images even if one fails
+        }
+      }
+    }
+
+    return this.newsService.create(
+      {
+        title: createNewsDto.title,
+        summary: createNewsDto.summary,
+        body: createNewsDto.body,
+        tags: tags || [],
+        images: imageUrls,
+        status: createNewsDto.status || 'draft',
+      },
+      user.id,
+    );
   }
 
   @Patch('news/:id')
-  updateNews(@Param('id') id: string, @Body() updateNewsDto: any, @CurrentUser() user: any) {
-    return this.newsService.update(id, updateNewsDto, user.id);
+  @UseInterceptors(FilesInterceptor('images', 4))
+  async updateNews(
+    @Param('id') id: string,
+    @Body() updateNewsDto: any,
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser() user: any,
+  ) {
+    // Parse tags if it's a JSON string
+    let tags = updateNewsDto.tags;
+    if (tags && typeof tags === 'string') {
+      try {
+        tags = JSON.parse(tags);
+      } catch {
+        tags = tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+      }
+    }
+
+    // Upload new images if provided
+    let imageUrls: string[] = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        try {
+          const uploaded = await this.mediaService.uploadFile(file, user.id);
+          imageUrls.push(uploaded.url);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+        }
+      }
+    }
+
+    // Parse existing images if provided (as JSON string from FormData)
+    let existingImages: string[] = [];
+    if (updateNewsDto.existingImages) {
+      try {
+        existingImages = typeof updateNewsDto.existingImages === 'string' 
+          ? JSON.parse(updateNewsDto.existingImages)
+          : Array.isArray(updateNewsDto.existingImages)
+          ? updateNewsDto.existingImages
+          : [];
+      } catch {
+        existingImages = [];
+      }
+    }
+
+    // Combine existing images with newly uploaded ones
+    const allImages = [...existingImages, ...imageUrls];
+
+    // Build update object
+    const updateData: any = {};
+    if (updateNewsDto.title !== undefined) updateData.title = updateNewsDto.title;
+    if (updateNewsDto.summary !== undefined) updateData.summary = updateNewsDto.summary;
+    if (updateNewsDto.body !== undefined) updateData.body = updateNewsDto.body;
+    if (tags !== undefined) updateData.tags = tags;
+    if (updateNewsDto.status !== undefined) updateData.status = updateNewsDto.status;
+    
+    // If new images were uploaded or existing images provided, use combined list
+    // Otherwise use DTO images or keep existing
+    if (allImages.length > 0) {
+      updateData.images = allImages;
+    } else if (updateNewsDto.images !== undefined) {
+      updateData.images = updateNewsDto.images;
+    }
+
+    return this.newsService.update(id, updateData, user.id);
   }
 
   @Delete('news/:id')
@@ -95,14 +205,126 @@ export class AdminController {
     });
   }
 
+  @Get('articles/:id')
+  getArticleById(@Param('id') id: string) {
+    return this.articlesService.findOne(id);
+  }
+
   @Post('articles')
-  createArticle(@Body() createArticleDto: any, @CurrentUser() user: any) {
-    return this.articlesService.create(createArticleDto, user.id);
+  @UseInterceptors(FilesInterceptor('images', 4))
+  async createArticle(
+    @Body() createArticleDto: any,
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser() user: any,
+  ) {
+    // Parse keywords if it's a JSON string
+    let keywords = createArticleDto.keywords;
+    if (typeof keywords === 'string') {
+      try {
+        keywords = JSON.parse(keywords);
+      } catch {
+        keywords = keywords.split(',').map((k: string) => k.trim()).filter(Boolean);
+      }
+    }
+
+    // Upload images if provided
+    let imageUrls: string[] = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        try {
+          const uploaded = await this.mediaService.uploadFile(file, user.id);
+          imageUrls.push(uploaded.url);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+        }
+      }
+    }
+
+    return this.articlesService.create(
+      {
+        title: createArticleDto.title,
+        content: createArticleDto.content,
+        excerpt: createArticleDto.excerpt,
+        images: imageUrls,
+        keywords: keywords || [],
+        relatedEventIds: createArticleDto.relatedEventIds || [],
+        relatedFeastIds: createArticleDto.relatedFeastIds || [],
+        audioUrl: createArticleDto.audioUrl,
+        readingTime: createArticleDto.readingTime,
+      },
+      user.id,
+    );
   }
 
   @Patch('articles/:id')
-  updateArticle(@Param('id') id: string, @Body() updateArticleDto: any, @CurrentUser() user: any) {
-    return this.articlesService.update(id, updateArticleDto, user.id);
+  @UseInterceptors(FilesInterceptor('images', 4))
+  async updateArticle(
+    @Param('id') id: string,
+    @Body() updateArticleDto: any,
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser() user: any,
+  ) {
+    // Parse keywords if it's a JSON string
+    let keywords = updateArticleDto.keywords;
+    if (keywords && typeof keywords === 'string') {
+      try {
+        keywords = JSON.parse(keywords);
+      } catch {
+        keywords = keywords.split(',').map((k: string) => k.trim()).filter(Boolean);
+      }
+    }
+
+    // Upload new images if provided
+    let imageUrls: string[] = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        try {
+          const uploaded = await this.mediaService.uploadFile(file, user.id);
+          imageUrls.push(uploaded.url);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+        }
+      }
+    }
+
+    // Parse existing images if provided (as JSON string from FormData)
+    let existingImages: string[] = [];
+    if (updateArticleDto.existingImages) {
+      try {
+        existingImages = typeof updateArticleDto.existingImages === 'string' 
+          ? JSON.parse(updateArticleDto.existingImages)
+          : Array.isArray(updateArticleDto.existingImages)
+          ? updateArticleDto.existingImages
+          : [];
+      } catch {
+        existingImages = [];
+      }
+    }
+
+    // Combine existing images with newly uploaded ones
+    const allImages = [...existingImages, ...imageUrls];
+
+    // Build update object
+    const updateData: any = {};
+    if (updateArticleDto.title !== undefined) updateData.title = updateArticleDto.title;
+    if (updateArticleDto.content !== undefined) updateData.content = updateArticleDto.content;
+    if (updateArticleDto.excerpt !== undefined) updateData.excerpt = updateArticleDto.excerpt;
+    if (keywords !== undefined) updateData.keywords = keywords;
+    if (updateArticleDto.relatedEventIds !== undefined) updateData.relatedEventIds = updateArticleDto.relatedEventIds;
+    if (updateArticleDto.relatedFeastIds !== undefined) updateData.relatedFeastIds = updateArticleDto.relatedFeastIds;
+    if (updateArticleDto.audioUrl !== undefined) updateData.audioUrl = updateArticleDto.audioUrl;
+    if (updateArticleDto.readingTime !== undefined) updateData.readingTime = updateArticleDto.readingTime;
+    
+    // If new images were uploaded or existing images provided, use combined list
+    if (allImages.length > 0) {
+      updateData.images = allImages;
+    } else if (updateArticleDto.images !== undefined) {
+      updateData.images = updateArticleDto.images;
+    } else if (updateArticleDto.coverImage !== undefined) {
+      updateData.coverImage = updateArticleDto.coverImage;
+    }
+
+    return this.articlesService.update(id, updateData, user.id);
   }
 
   @Delete('articles/:id')

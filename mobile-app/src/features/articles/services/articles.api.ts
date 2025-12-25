@@ -32,15 +32,15 @@ export const articlesApi = {
   },
 
   author: async (id: string): Promise<Author> => {
-    const data = await apiFetch<any>(`/users/${id}/profile`); // Assuming endpoint
+    const data = await apiFetch<any>(`/users/${id}/profile`);
     return {
       id: data.id,
       name: data.name,
-      avatarUrl: data.avatar_url,
+      avatarUrl: data.avatarUrl,
       bio: data.bio,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      title: data.role // Mapping role to title for now
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      title: data.role, // Mapping role to title
     };
   },
 
@@ -61,13 +61,17 @@ export const articlesApi = {
 
 // Helper to map backend fields to frontend model
 function mapArticleFromBackend(data: any): SpiritualArticle {
+  // Get images array or fallback to cover_image
+  const images = data.images || (data.cover_image ? [data.cover_image] : []);
+  
   return {
     id: data.id,
     title: data.title,
     slug: data.slug,
     content: data.content,
     excerpt: data.excerpt || data.content?.substring(0, 100) || '',
-    coverImage: data.cover_image,
+    coverImage: data.cover_image || (images.length > 0 ? images[0] : undefined),
+    images: images,
     authorId: data.author_id,
     publishedAt: data.published_at,
     createdAt: data.created_at,
@@ -80,9 +84,11 @@ function mapArticleFromBackend(data: any): SpiritualArticle {
     author: data.author ? {
         id: data.author.id,
         name: data.author.name,
-        avatarUrl: data.author.avatar_url,
-        createdAt: data.author.created_at,
-        updatedAt: data.author.updated_at
+        avatarUrl: data.author.profile?.avatarUrl,
+        bio: data.author.profile?.bio,
+        title: data.author.role,
+        createdAt: data.author.created_at || data.created_at,
+        updatedAt: data.author.updated_at || data.updated_at,
     } : undefined
   } as SpiritualArticle;
 }

@@ -23,6 +23,9 @@ export function useCreateNews() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-news"] });
     },
+    onError: (error) => {
+      console.error("Failed to create news:", error);
+    },
   });
 }
 
@@ -34,6 +37,9 @@ export function useUpdateNews() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-news"] });
     },
+    onError: (error) => {
+      console.error("Failed to update news:", error);
+    },
   });
 }
 
@@ -44,6 +50,9 @@ export function useDeleteNews() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-news"] });
     },
+    onError: (error) => {
+      console.error("Failed to delete news:", error);
+    },
   });
 }
 
@@ -53,6 +62,9 @@ export function usePublishNews() {
     mutationFn: newsApi.publish,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-news"] });
+    },
+    onError: (error) => {
+      console.error("Failed to publish news:", error);
     },
   });
 }

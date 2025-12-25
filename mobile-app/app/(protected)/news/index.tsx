@@ -1,4 +1,5 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNewsList } from '../../../src/features/news/hooks/useNews';
 import { NewsCard } from '../../../src/features/news/components/NewsCard';
 
@@ -6,7 +7,8 @@ export default function NewsListScreen() {
   const newsQuery = useNewsList();
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>Latest News</Text>
       <Text style={styles.subtitle}>
         Stay informed with news from Hamere Trufat and the wider church.
@@ -21,13 +23,19 @@ export default function NewsListScreen() {
           <Text style={styles.emptyText}>No news available.</Text>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     padding: 24,
+    paddingTop: 16,
     gap: 16,
     backgroundColor: '#f8fafc',
   },

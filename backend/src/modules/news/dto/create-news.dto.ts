@@ -18,9 +18,14 @@ export class CreateNewsDto {
   @IsOptional()
   tags?: string[];
 
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  images?: string[];
+
   @IsString()
   @IsOptional()
-  coverImage?: string;
+  coverImage?: string; // Keep for backward compatibility
 
   @IsEnum(['draft', 'scheduled', 'published'])
   @IsOptional()

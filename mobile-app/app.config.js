@@ -7,7 +7,7 @@ export default {
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
     splash: {
-      image: "./assets/splash.png",
+      image: "./assets/hamere-tirufat-logo.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff"
     },

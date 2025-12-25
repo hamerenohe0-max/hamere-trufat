@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useNewsList, useDeleteNews, usePublishNews } from "../hooks/useNews";
 import {
   Table,
@@ -15,12 +16,24 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Eye, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function NewsList() {
   const router = useRouter();
   const { data: news, isLoading } = useNewsList();
   const deleteMutation = useDeleteNews();
   const publishMutation = usePublishNews();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Mock data for development
   const mockNews = [
@@ -50,6 +63,29 @@ export function NewsList() {
   ];
 
   const newsItems = news?.items || mockNews;
+
+  const handleDelete = async () => {
+    if (deletingId) {
+      try {
+        await deleteMutation.mutateAsync(deletingId);
+        toast.success("News article deleted successfully");
+        setDeletingId(null);
+      } catch (error) {
+        toast.error("Failed to delete news article");
+        console.error(error);
+      }
+    }
+  };
+
+  const handlePublish = async (id: string) => {
+    try {
+      await publishMutation.mutateAsync(id);
+      toast.success("News article published successfully");
+    } catch (error) {
+      toast.error("Failed to publish news article");
+      console.error(error);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
@@ -129,19 +165,17 @@ export function NewsList() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => publishMutation.mutate(item.id)}
+                        onClick={() => handlePublish(item.id)}
+                        disabled={publishMutation.isPending}
                       >
-                        Publish
+                        {publishMutation.isPending ? "Publishing..." : "Publish"}
                       </Button>
                     )}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this news item?")) {
-                          deleteMutation.mutate(item.id);
-                        }
-                      }}
+                      onClick={() => setDeletingId(item.id)}
+                      disabled={deleteMutation.isPending}
                     >
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
@@ -152,6 +186,27 @@ export function NewsList() {
           )}
         </TableBody>
       </Table>
+
+      <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the news article
+              "{newsItems.find((item) => item.id === deletingId)?.title}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

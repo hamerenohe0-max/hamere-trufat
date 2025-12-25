@@ -1,4 +1,5 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { useEvents } from '../../../src/features/events/hooks/useEvents';
 
@@ -6,7 +7,8 @@ export default function EventsListScreen() {
   const eventsQuery = useEvents();
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>Events</Text>
       <Text style={styles.subtitle}>
         Upcoming church events, celebrations, and gatherings.
@@ -50,13 +52,19 @@ export default function EventsListScreen() {
           <Text style={styles.emptyText}>No events available.</Text>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     padding: 24,
+    paddingTop: 16,
     gap: 16,
     backgroundColor: '#f8fafc',
   },

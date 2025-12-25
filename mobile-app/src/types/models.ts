@@ -58,6 +58,7 @@ export interface NewsItem extends BaseEntity {
   summary: string;
   body: string;
   tags: string[];
+  images?: string[];
   authorId: string;
   publishedAt?: string;
   status: 'draft' | 'scheduled' | 'published';
@@ -68,6 +69,7 @@ export interface Article extends BaseEntity {
   slug: string;
   content: string;
   coverImage?: string;
+  images?: string[];
   authorId: string;
   publishedAt?: string;
   relatedEventIds: string[];
@@ -173,7 +175,8 @@ export interface NewsComment extends BaseEntity {
 
 export interface NewsDetail extends NewsItem {
   content: string;
-  coverImage?: string;
+  coverImage?: string; // For backward compatibility
+  images?: string[]; // Up to 4 images
   comments: NewsComment[];
   reactions: {
     likes: number;

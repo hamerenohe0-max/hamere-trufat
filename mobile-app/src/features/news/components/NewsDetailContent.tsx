@@ -1,8 +1,10 @@
 import { memo, useMemo } from 'react';
-import { Share, Text, TouchableOpacity, View } from 'react-native';
+import { Share, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { NewsDetail } from '../../../types/models';
 import { useNewsStore } from '../state/useNewsStore';
 import * as Haptics from 'expo-haptics';
+import { NewsImageGallery } from './NewsImageGallery';
+import { colors } from '../../../config/colors';
 
 interface Props {
   news: NewsDetail;
@@ -33,10 +35,20 @@ export const NewsDetailContent = memo(
       await Share.share({ message: sharePayload });
     }
 
+    // Get images from news item (images array or fallback to coverImage)
+    const newsImages = news.images || (news['coverImage'] ? [news['coverImage']] : []);
+
     return (
       <View style={{ gap: 16 }}>
         <Text style={styles.title}>{news.title}</Text>
         <Text style={styles.meta}>{news.publishedAt}</Text>
+        
+        {newsImages.length > 0 && (
+          <View style={styles.imageContainer}>
+            <NewsImageGallery images={newsImages} maxDisplay={4} />
+          </View>
+        )}
+        
         <Text style={styles.body}>{news.translation?.body ?? news.content}</Text>
 
         <View style={styles.tags}>
@@ -122,14 +134,21 @@ const styles = {
     fontSize: 28,
     fontWeight: '700' as const,
     color: '#0f172a',
+    marginBottom: 8,
   },
   meta: {
     color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  imageContainer: {
+    marginVertical: 8,
   },
   body: {
     fontSize: 16,
     lineHeight: 24,
     color: '#1f2937',
+    marginTop: 8,
   },
   tags: {
     flexDirection: 'row' as const,
@@ -137,13 +156,13 @@ const styles = {
     gap: 8,
   },
   tag: {
-    backgroundColor: '#eef2ff',
+    backgroundColor: colors.primary.lighter + '20', // 20% opacity
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   tagText: {
-    color: '#3730a3',
+    color: colors.primary.dark,
     fontSize: 12,
   },
   actions: {
@@ -159,10 +178,10 @@ const styles = {
     paddingVertical: 8,
   },
   reactionActive: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary.main,
   },
   reactionText: {
-    color: '#1e3a8a',
+    color: colors.primary.darkest,
     fontWeight: '600' as const,
   },
   translateRow: {
@@ -181,7 +200,7 @@ const styles = {
     color: '#475569',
   },
   langLabelActive: {
-    color: '#2563eb',
+    color: colors.primary.main,
     fontWeight: '600' as const,
   },
 };

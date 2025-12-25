@@ -9,6 +9,9 @@ export class NewsService {
   constructor(private readonly supabase: SupabaseService) {}
 
   async create(createNewsDto: CreateNewsDto, authorId: string): Promise<any> {
+    // Use images array if provided, otherwise fall back to coverImage for backward compatibility
+    const images = createNewsDto.images || (createNewsDto.coverImage ? [createNewsDto.coverImage] : []);
+    
     const { data, error } = await this.supabase.client
       .from('news')
       .insert({
@@ -16,7 +19,8 @@ export class NewsService {
         summary: createNewsDto.summary,
         body: createNewsDto.body,
         tags: createNewsDto.tags,
-        cover_image: createNewsDto.coverImage,
+        images: images,
+        cover_image: createNewsDto.coverImage || (images.length > 0 ? images[0] : null), // Keep for backward compatibility
         status: createNewsDto.status,
         scheduled_at: createNewsDto.scheduledAt,
         author_id: authorId,
@@ -73,17 +77,30 @@ export class NewsService {
       throw new ForbiddenException('You can only update your own news');
     }
 
-    const updates: any = { ...updateNewsDto };
+    const updates: any = {};
+    
+    // Copy all fields except special ones
+    if (updateNewsDto.title !== undefined) updates.title = updateNewsDto.title;
+    if (updateNewsDto.summary !== undefined) updates.summary = updateNewsDto.summary;
+    if (updateNewsDto.body !== undefined) updates.body = updateNewsDto.body;
+    if (updateNewsDto.tags !== undefined) updates.tags = updateNewsDto.tags;
+    if (updateNewsDto.status !== undefined) updates.status = updateNewsDto.status;
+    if (updateNewsDto.scheduledAt !== undefined) updates.scheduled_at = updateNewsDto.scheduledAt;
     
     if (updateNewsDto.status === 'published' && news.status !== 'published') {
       updates.published_at = new Date().toISOString();
     }
     
-    // Map camelCase DTO to snake_case DB
-    if (updateNewsDto.coverImage) updates.cover_image = updateNewsDto.coverImage;
-    if (updateNewsDto.scheduledAt) updates.scheduled_at = updateNewsDto.scheduledAt;
-    delete updates.coverImage;
-    delete updates.scheduledAt;
+    // Handle images array - use images if provided, otherwise fall back to coverImage
+    if (updateNewsDto.images !== undefined) {
+      updates.images = updateNewsDto.images;
+      // Also update cover_image to first image for backward compatibility
+      updates.cover_image = updateNewsDto.images.length > 0 ? updateNewsDto.images[0] : null;
+    } else if (updateNewsDto.coverImage !== undefined) {
+      // If only coverImage is provided, convert to images array
+      updates.images = updateNewsDto.coverImage ? [updateNewsDto.coverImage] : [];
+      updates.cover_image = updateNewsDto.coverImage;
+    }
 
     const { data, error } = await this.supabase.client
       .from('news')

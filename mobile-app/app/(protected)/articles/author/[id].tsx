@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View, Image } from 'react-native';
 import {
   useArticlesByAuthor,
   useAuthorProfile,
@@ -14,22 +14,58 @@ export default function AuthorScreen() {
 
   if (authorQuery.isLoading) {
     return (
-      <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 48 }} />
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
     );
   }
 
+  if (!authorQuery.data) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>Author not found</Text>
+      </View>
+    );
+  }
+
+  const author = authorQuery.data;
+  const articles = articlesQuery.data || [];
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <AuthorCard author={authorQuery.data} />
+      {/* Author Profile Summary */}
+      <View style={styles.profileSection}>
+        {author.avatarUrl && (
+          <Image source={{ uri: author.avatarUrl }} style={styles.avatar} />
+        )}
+        <Text style={styles.authorName}>{author.name}</Text>
+        {author.title && (
+          <Text style={styles.authorTitle}>{author.title}</Text>
+        )}
+        {author.bio && (
+          <Text style={styles.authorBio}>{author.bio}</Text>
+        )}
+        <View style={styles.statsContainer}>
+          <View style={styles.stat}>
+            <Text style={styles.statNumber}>{articles.length}</Text>
+            <Text style={styles.statLabel}>Articles</Text>
+          </View>
+        </View>
+      </View>
 
-      <Text style={styles.heading}>Articles</Text>
-      {articlesQuery.isLoading ? (
-        <ActivityIndicator size="large" color="#2563eb" />
-      ) : (
-        articlesQuery.data?.map((article) => (
-          <ArticleCard key={article.id} article={article} />
-        ))
-      )}
+      {/* Recent Posts Section */}
+      <View style={styles.articlesSection}>
+        <Text style={styles.heading}>Recent Posts</Text>
+        {articlesQuery.isLoading ? (
+          <ActivityIndicator size="large" color="#2563eb" style={styles.loader} />
+        ) : articles.length === 0 ? (
+          <Text style={styles.emptyText}>No articles yet</Text>
+        ) : (
+          articles.map((article) => (
+            <ArticleCard key={article.id} article={article} />
+          ))
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -37,12 +73,88 @@ export default function AuthorScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 24,
-    gap: 16,
+    gap: 24,
     backgroundColor: '#f8fafc',
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  emptyText: {
+    color: '#94a3b8',
+    fontSize: 16,
+  },
+  profileSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#f1f5f9',
+  },
+  authorName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  authorTitle: {
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  authorBio: {
+    fontSize: 14,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 32,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    width: '100%',
+    justifyContent: 'center',
+  },
+  stat: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  articlesSection: {
+    gap: 16,
   },
   heading: {
     fontSize: 22,
     fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  loader: {
+    marginVertical: 24,
   },
 });
 

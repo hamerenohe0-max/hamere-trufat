@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { useGameStore } from '../../../src/features/games/state/useGameStore';
 
@@ -37,7 +38,8 @@ export default function GamesListScreen() {
   const leaderboard = useGameStore((state) => state.leaderboard);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>Games</Text>
       <Text style={styles.subtitle}>
         Test your knowledge and have fun with spiritual games.
@@ -45,47 +47,79 @@ export default function GamesListScreen() {
 
       <View style={styles.gamesGrid}>
         {GAMES.map((game) => {
-          const topScore = leaderboard(game.id as any)[0];
-          return (
-            <Link key={game.id} href={game.route as any} asChild>
-              <TouchableOpacity style={styles.gameCard}>
-                <Text style={styles.gameIcon}>{game.icon}</Text>
-                <Text style={styles.gameTitle}>{game.title}</Text>
-                <Text style={styles.gameDescription}>{game.description}</Text>
-                {topScore && (
-                  <Text style={styles.highScore}>
-                    Best: {topScore.score} points
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </Link>
-          );
+          try {
+            const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
+            const topScore = scores && scores.length > 0 ? scores[0] : null;
+            return (
+              <Link key={game.id} href={game.route as any} asChild>
+                <TouchableOpacity style={styles.gameCard}>
+                  <Text style={styles.gameIcon}>{game.icon}</Text>
+                  <Text style={styles.gameTitle}>{game.title}</Text>
+                  <Text style={styles.gameDescription}>{game.description}</Text>
+                  {topScore && (
+                    <Text style={styles.highScore}>
+                      Best: {topScore.score} points
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </Link>
+            );
+          } catch (error) {
+            console.error('Error loading game scores:', error);
+            return (
+              <Link key={game.id} href={game.route as any} asChild>
+                <TouchableOpacity style={styles.gameCard}>
+                  <Text style={styles.gameIcon}>{game.icon}</Text>
+                  <Text style={styles.gameTitle}>{game.title}</Text>
+                  <Text style={styles.gameDescription}>{game.description}</Text>
+                </TouchableOpacity>
+              </Link>
+            );
+          }
         })}
       </View>
 
       <View style={styles.leaderboardSection}>
         <Text style={styles.sectionTitle}>Your Top Scores</Text>
         {GAMES.map((game) => {
-          const scores = leaderboard(game.id as any);
-          if (scores.length === 0) return null;
-          return (
-            <View key={game.id} style={styles.scoreRow}>
-              <Text style={styles.scoreGame}>{game.title}</Text>
-              <Text style={styles.scoreValue}>{scores[0].score} pts</Text>
-            </View>
-          );
+          try {
+            const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
+            if (!scores || scores.length === 0) return null;
+            return (
+              <View key={game.id} style={styles.scoreRow}>
+                <Text style={styles.scoreGame}>{game.title}</Text>
+                <Text style={styles.scoreValue}>{scores[0].score} pts</Text>
+              </View>
+            );
+          } catch (error) {
+            console.error('Error loading scores for game:', game.id, error);
+            return null;
+          }
         })}
-        {GAMES.every((game) => leaderboard(game.id as any).length === 0) && (
+        {GAMES.every((game) => {
+          try {
+            const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
+            return !scores || scores.length === 0;
+          } catch {
+            return true;
+          }
+        }) && (
           <Text style={styles.emptyScores}>No scores yet. Play a game to get started!</Text>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     padding: 24,
+    paddingTop: 16,
     gap: 24,
     backgroundColor: '#f8fafc',
   },

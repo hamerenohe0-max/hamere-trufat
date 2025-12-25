@@ -1,7 +1,9 @@
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePreferencesStore } from '../../src/store/usePreferencesStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { colors } from '../../src/config/colors';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -32,7 +34,8 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>Settings</Text>
 
       {/* Appearance */}
@@ -209,13 +212,19 @@ export default function SettingsScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     padding: 24,
+    paddingTop: 16,
     gap: 24,
     backgroundColor: '#f8fafc',
   },
@@ -270,8 +279,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   themeButtonActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: colors.primary.main,
+    borderColor: colors.primary.main,
   },
   themeButtonText: {
     fontSize: 14,
@@ -290,14 +299,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#eef2ff',
+    backgroundColor: colors.primary.lighter + '20', // 20% opacity
     justifyContent: 'center',
     alignItems: 'center',
   },
   fontButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2563eb',
+    color: colors.primary.main,
   },
   fontScaleValue: {
     fontSize: 16,
@@ -316,32 +325,32 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   languageOptionActive: {
-    backgroundColor: '#eef2ff',
+    backgroundColor: colors.primary.lighter + '20', // 20% opacity
     borderWidth: 2,
-    borderColor: '#2563eb',
+    borderColor: colors.primary.main,
   },
   languageText: {
     fontSize: 16,
     color: '#1f2937',
   },
   languageTextActive: {
-    color: '#2563eb',
+    color: colors.primary.main,
     fontWeight: '600',
   },
   checkmark: {
     fontSize: 20,
-    color: '#2563eb',
+    color: colors.primary.main,
     fontWeight: 'bold',
   },
   accountButton: {
-    backgroundColor: '#eef2ff',
+    backgroundColor: colors.primary.lighter + '20', // 20% opacity
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
   },
   accountButtonText: {
-    color: '#2563eb',
+    color: colors.primary.main,
     fontWeight: '600',
     fontSize: 16,
   },

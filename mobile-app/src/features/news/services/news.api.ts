@@ -66,12 +66,16 @@ export const newsApi = {
 };
 
 function mapNewsFromBackend(data: any): NewsItem {
+  // Get images array or fallback to cover_image for backward compatibility
+  const images = data.images || (data.cover_image ? [data.cover_image] : []);
+  
   return {
     id: data.id,
     title: data.title,
     summary: data.summary,
     body: data.body,
     tags: data.tags || [],
+    images: images,
     authorId: data.author_id,
     status: data.status,
     publishedAt: data.published_at,

@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter, Link } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useAddNewsComment,
   useBookmarkNews,
@@ -10,6 +11,7 @@ import {
 } from '../../../src/features/news/hooks/useNews';
 import { NewsDetailContent } from '../../../src/features/news/components/NewsDetailContent';
 import { NewsComments } from '../../../src/features/news/components/NewsComments';
+import { colors } from '../../../src/config/colors';
 
 export default function NewsDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -23,7 +25,7 @@ export default function NewsDetailScreen() {
   if (newsQuery.isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={colors.primary.main} />
       </View>
     );
   }
@@ -39,41 +41,48 @@ export default function NewsDetailScreen() {
   const news = newsQuery.data;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <NewsDetailContent
-        news={news}
-        onReact={(value) => reactMutation.mutate(value)}
-        onBookmark={() => bookmarkMutation.mutate()}
-        onTranslate={(lang) => translateMutation.mutate(lang)}
-      />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <NewsDetailContent
+          news={news}
+          onReact={(value) => reactMutation.mutate(value)}
+          onBookmark={() => bookmarkMutation.mutate()}
+          onTranslate={(lang) => translateMutation.mutate(lang)}
+        />
 
-      <NewsComments
-        comments={commentsQuery.data ?? []}
-        onSubmit={async (body) => {
-          await commentMutation.mutateAsync(body);
-          commentsQuery.refetch();
-        }}
-      />
+        <NewsComments
+          comments={commentsQuery.data ?? []}
+          onSubmit={async (body) => {
+            await commentMutation.mutateAsync(body);
+            commentsQuery.refetch();
+          }}
+        />
 
-      {news.related?.length ? (
-        <View style={{ marginTop: 24 }}>
-          <Text style={styles.relatedHeading}>Related news</Text>
-          {news.related.map((related) => (
-            <Link key={related.id} href={`/(protected)/news/${related.id}`} asChild>
-              <TouchableOpacity style={styles.relatedItem}>
-                <Text style={styles.relatedItemText}>• {related.title}</Text>
-              </TouchableOpacity>
-            </Link>
-          ))}
-        </View>
-      ) : null}
-    </ScrollView>
+        {news.related?.length ? (
+          <View style={{ marginTop: 24 }}>
+            <Text style={styles.relatedHeading}>Related news</Text>
+            {news.related.map((related) => (
+              <Link key={related.id} href={`/(protected)/news/${related.id}`} asChild>
+                <TouchableOpacity style={styles.relatedItem}>
+                  <Text style={styles.relatedItemText}>• {related.title}</Text>
+                </TouchableOpacity>
+              </Link>
+            ))}
+          </View>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     padding: 24,
+    paddingTop: 16,
     gap: 16,
     backgroundColor: '#fff',
   },
@@ -96,7 +105,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   relatedItemText: {
-    color: '#2563eb',
+    color: colors.primary.main,
     fontSize: 14,
   },
 });

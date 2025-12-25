@@ -12,6 +12,7 @@ import {
   useBookmarkArticle,
 } from '../../../src/features/articles/hooks/useArticles';
 import { AuthorCard } from '../../../src/features/articles/components/AuthorCard';
+import { ArticleImageGallery } from '../../../src/features/articles/components/ArticleImageGallery';
 import * as Haptics from 'expo-haptics';
 
 export default function ArticleDetailScreen() {
@@ -40,9 +41,18 @@ export default function ArticleDetailScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>{article.title}</Text>
-      <Text style={styles.meta}>
-        {article.author?.name ?? 'Hamere Trufat'} • {article.readingTime}
-      </Text>
+      <View style={styles.metaContainer}>
+        {article.author ? (
+          <Link href={`/(protected)/articles/author/${article.author.id}`} asChild>
+            <TouchableOpacity>
+              <Text style={styles.authorName}>{article.author.name}</Text>
+            </TouchableOpacity>
+          </Link>
+        ) : (
+          <Text style={styles.meta}>Hamere Trufat</Text>
+        )}
+        <Text style={styles.meta}> • {article.readingTime}</Text>
+      </View>
 
       <View style={styles.actions}>
         <TouchableOpacity
@@ -65,14 +75,21 @@ export default function ArticleDetailScreen() {
         {article.author && (
           <Link
             href={`/(protected)/articles/author/${article.author.id}`}
-            style={styles.authorLink}
+            asChild
           >
-            <Text style={styles.authorLinkText}>View author</Text>
+            <TouchableOpacity style={styles.authorLink}>
+              <Text style={styles.authorLinkText}>View author</Text>
+            </TouchableOpacity>
           </Link>
         )}
       </View>
 
       <AuthorCard author={article.author} />
+
+      {/* Display article images */}
+      {article.images && article.images.length > 0 && (
+        <ArticleImageGallery images={article.images} maxDisplay={4} />
+      )}
 
       <Text style={styles.content}>{article.content}</Text>
 
@@ -106,8 +123,17 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '700',
   },
+  metaContainer: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+  },
   meta: {
     color: '#94a3b8',
+  },
+  authorName: {
+    color: '#2563eb',
+    fontWeight: '600' as const,
   },
   actions: {
     flexDirection: 'row',

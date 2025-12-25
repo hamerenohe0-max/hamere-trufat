@@ -2,9 +2,13 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { OfflineBanner } from '../src/components/OfflineBanner';
 import { registerBackgroundSync } from '../src/services/offline/background-sync';
+
+// Hide native splash screen immediately - we're using a custom one
+SplashScreen.hideAsync();
 
 export default function RootLayout() {
   const [queryClient] = useState(

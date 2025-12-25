@@ -208,6 +208,33 @@ export class UsersService {
     return data;
   }
 
+  async getPublicProfile(userId: string): Promise<any> {
+    const { data: user, error } = await this.supabase.client
+      .from('users')
+      .select('id, name, profile, role, created_at, updated_at')
+      .eq('id', userId)
+      .eq('status', 'active')
+      .single();
+
+    if (error || !user) {
+      throw new NotFoundException('User profile not found');
+    }
+
+    const profile = (user.profile as any) || {};
+    
+    return {
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      bio: profile.bio,
+      avatarUrl: profile.avatarUrl,
+      language: profile.language,
+      region: profile.region,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+    };
+  }
+
   toSafeUser(user: any): SafeUser {
     return {
       id: user.id,
