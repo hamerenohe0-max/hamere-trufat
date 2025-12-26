@@ -170,11 +170,37 @@ export default function NewsViewPage({
                   <p className="text-gray-700 whitespace-pre-wrap">{news.body}</p>
                 </div>
               </div>
+
+              <div>
+                <strong className="text-sm font-medium text-gray-700 mb-2 block">
+                  Engagement:
+                </strong>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Likes:</span>{" "}
+                    <span className="font-semibold">{(news as any).likes || 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Dislikes:</span>{" "}
+                    <span className="font-semibold">{(news as any).dislikes || 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Comments:</span>{" "}
+                    <span className="font-semibold">{(news as any).comments_count || 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Views:</span>{" "}
+                    <span className="font-semibold">{(news as any).views || 0}</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
         </div>
       </AdminLayout>
     </AuthGate>
   );
 }
+
 

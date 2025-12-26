@@ -41,15 +41,20 @@ export class ArticlesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.articlesService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user?: any) {
+    return this.articlesService.findOne(id, user?.id);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'publisher')
   update(@Param('id') id: string, @Body() updateDto: CreateArticleDto, @CurrentUser() user: any) {
-    return this.articlesService.update(id, updateDto, user.id);
+    try {
+      return this.articlesService.update(id, updateDto, user.id, user?.role);
+    } catch (error) {
+      console.error('Error in update controller:', error);
+      throw error;
+    }
   }
 
   @Delete(':id')
@@ -57,6 +62,12 @@ export class ArticlesController {
   @Roles('admin', 'publisher')
   remove(@Param('id') id: string, @CurrentUser() user: any) {
     return this.articlesService.delete(id, user.id, user.role);
+  }
+
+  @Post(':id/reactions')
+  @UseGuards(JwtAuthGuard)
+  toggleReaction(@Param('id') id: string, @Body() body: { reaction: 'like' | 'dislike' }, @CurrentUser() user: any) {
+    return this.articlesService.toggleReaction(id, user.id, body.reaction);
   }
 
   @Post(':id/bookmark')

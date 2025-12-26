@@ -2,6 +2,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { useEvents } from '../../../src/features/events/hooks/useEvents';
+import { formatEventDate } from '../../../src/utils/dateFormat';
 
 export default function EventsListScreen() {
   const eventsQuery = useEvents();
@@ -29,14 +30,7 @@ export default function EventsListScreen() {
                 )}
               </View>
               <Text style={styles.date}>
-                {new Date(event.startDate).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {formatEventDate(event.startDate)}
               </Text>
               <Text style={styles.location}>📍 {event.location}</Text>
               {event.description && (

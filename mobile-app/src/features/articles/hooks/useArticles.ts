@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { articlesApi } from '../services/articles.api';
 
 export const useArticlesList = () =>
@@ -28,9 +28,41 @@ export const useArticlesByAuthor = (id: string) =>
     enabled: !!id,
   });
 
-export const useBookmarkArticle = (id: string) =>
-  useMutation({
-    mutationFn: () => articlesApi.bookmark(id),
+export const useReactToArticle = (id: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: 'like' | 'dislike') => articlesApi.react(id, value),
+    onSuccess: (data) => {
+      // Update the cache optimistically
+      queryClient.setQueryData(['articles', id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          reactions: {
+            likes: data.likes,
+            dislikes: data.dislikes,
+            userReaction: data.userReaction,
+          },
+        };
+      });
+    },
   });
+};
 
+export const useBookmarkArticle = (id: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => articlesApi.bookmark(id),
+    onSuccess: (data) => {
+      // Update the cache optimistically
+      queryClient.setQueryData(['articles', id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          bookmarked: data.bookmarked,
+        };
+      });
+    },
+  });
+};
 

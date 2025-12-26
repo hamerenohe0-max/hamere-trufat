@@ -5,6 +5,7 @@ import { useNewsStore } from '../state/useNewsStore';
 import * as Haptics from 'expo-haptics';
 import { NewsImageGallery } from './NewsImageGallery';
 import { colors } from '../../../config/colors';
+import { formatSimpleDate } from '../../../utils/dateFormat';
 
 interface Props {
   news: NewsDetail;
@@ -21,9 +22,9 @@ const LANGUAGES = [
 
 export const NewsDetailContent = memo(
   ({ news, onReact, onBookmark, onTranslate }: Props) => {
-    const { reactions, bookmarks, toggleBookmark } = useNewsStore();
-    const userReaction = reactions[news.id] ?? news.reactions.userReaction ?? null;
-    const bookmarked = bookmarks[news.id] ?? (news.bookmarked ? news.title : undefined);
+    const { toggleBookmark } = useNewsStore();
+    const userReaction = news.reactions?.userReaction ?? null;
+    const bookmarked = news.bookmarked ?? false;
 
     const translationLanguage = news.translation?.language;
     const sharePayload = useMemo(
@@ -36,16 +37,26 @@ export const NewsDetailContent = memo(
     }
 
     // Get images from news item (images array or fallback to coverImage)
-    const newsImages = news.images || (news['coverImage'] ? [news['coverImage']] : []);
+    // Filter out any empty/null values
+    let newsImages: string[] = [];
+    
+    if (news.images && Array.isArray(news.images) && news.images.length > 0) {
+      newsImages = news.images.filter((img) => img && img.trim().length > 0);
+    }
+    
+    // Fallback to coverImage if no images in array
+    if (newsImages.length === 0 && news['coverImage'] && news['coverImage'].trim().length > 0) {
+      newsImages = [news['coverImage']];
+    }
 
     return (
       <View style={{ gap: 16 }}>
         <Text style={styles.title}>{news.title}</Text>
-        <Text style={styles.meta}>{news.publishedAt}</Text>
+        <Text style={styles.meta}>{formatSimpleDate(news.publishedAt || news.createdAt)}</Text>
         
         {newsImages.length > 0 && (
           <View style={styles.imageContainer}>
-            <NewsImageGallery images={newsImages} maxDisplay={4} />
+            <NewsImageGallery images={newsImages} height={400} />
           </View>
         )}
         
@@ -63,20 +74,18 @@ export const NewsDetailContent = memo(
           <TouchableOpacity
             style={[styles.reaction, userReaction === 'like' && styles.reactionActive]}
             onPress={() => {
-              toggleReaction(news.id, 'like');
               onReact('like');
             }}
           >
-            <Text style={styles.reactionText}>👍 {news.reactions.likes}</Text>
+            <Text style={styles.reactionText}>👍 {news.reactions?.likes || 0}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.reaction, userReaction === 'dislike' && styles.reactionActive]}
             onPress={() => {
-              toggleReaction(news.id, 'dislike');
               onReact('dislike');
             }}
           >
-            <Text style={styles.reactionText}>👎 {news.reactions.dislikes}</Text>
+            <Text style={styles.reactionText}>👎 {news.reactions?.dislikes || 0}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.reaction} onPress={handleShare}>
             <Text style={styles.reactionText}>Share</Text>
@@ -125,9 +134,6 @@ export const NewsDetailContent = memo(
   },
 );
 
-function toggleReaction(id: string, value: 'like' | 'dislike') {
-  useNewsStore.getState().react(id, value);
-}
 
 const styles = {
   title: {
@@ -142,7 +148,7 @@ const styles = {
     marginBottom: 16,
   },
   imageContainer: {
-    marginVertical: 8,
+    marginVertical: 0,
   },
   body: {
     fontSize: 16,

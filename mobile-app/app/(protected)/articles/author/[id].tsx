@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useArticlesByAuthor,
   useAuthorProfile,
@@ -32,7 +33,8 @@ export default function AuthorScreen() {
   const articles = articlesQuery.data || [];
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
       {/* Author Profile Summary */}
       <View style={styles.profileSection}>
         {author.avatarUrl && (
@@ -66,13 +68,20 @@ export default function AuthorScreen() {
           ))
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     padding: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
     gap: 24,
     backgroundColor: '#f8fafc',
   },

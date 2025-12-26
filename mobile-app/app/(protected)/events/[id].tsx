@@ -12,6 +12,7 @@ import {
 import { useEventDetail, useEventReminder } from '../../../src/features/events/hooks/useEvents';
 import * as Calendar from 'expo-calendar';
 import * as Sharing from 'expo-sharing';
+import { formatEventDate } from '../../../src/utils/dateFormat';
 
 export default function EventDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -110,19 +111,12 @@ export default function EventDetailScreen() {
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📅 Date & Time</Text>
           <Text style={styles.infoValue}>
-            {new Date(event.startDate).toLocaleString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {formatEventDate(event.startDate)}
           </Text>
           {event.endDate && (
             <Text style={styles.infoValue}>
-              Until: {new Date(event.endDate).toLocaleString('en-US', {
-                hour: '2-digit',
+              Until: {new Date(event.endDate).toLocaleTimeString('en-US', {
+                hour: 'numeric',
                 minute: '2-digit',
               })}
             </Text>

@@ -92,31 +92,97 @@ export class AdminController {
       }
     }
 
-    // Upload images if provided
     let imageUrls: string[] = [];
-    if (files && files.length > 0) {
+    
+    // Check if images are provided as URLs (from admin panel) or files
+    if (createNewsDto.images && Array.isArray(createNewsDto.images)) {
+      // Images provided as URLs directly (simpler flow)
+      imageUrls = createNewsDto.images.filter((url: any) => url && typeof url === 'string' && url.trim().length > 0);
+      console.log('Admin: Received image URLs directly:', imageUrls);
+    } else if (files && files.length > 0) {
+      // Files uploaded - upload to Cloudinary and get URLs
+      console.log(`Admin: Uploading ${files.length} image(s) to Cloudinary...`);
       for (const file of files) {
         try {
           const uploaded = await this.mediaService.uploadFile(file, user.id);
-          imageUrls.push(uploaded.url);
+          if (uploaded?.url && typeof uploaded.url === 'string' && uploaded.url.trim().length > 0) {
+            imageUrls.push(uploaded.url);
+            console.log('Admin: Image uploaded successfully, URL:', uploaded.url);
+          }
         } catch (error) {
-          console.error('Failed to upload image:', error);
-          // Continue with other images even if one fails
+          console.error('Admin: Failed to upload image:', error);
         }
       }
     }
 
-    return this.newsService.create(
-      {
-        title: createNewsDto.title,
-        summary: createNewsDto.summary,
-        body: createNewsDto.body,
-        tags: tags || [],
-        images: imageUrls,
-        status: createNewsDto.status || 'draft',
-      },
-      user.id,
-    );
+    // Convert Google Drive links to direct image URLs
+    const convertGoogleDriveLink = (url: string): string => {
+      if (!url || typeof url !== 'string') return url;
+      
+      // Match Google Drive sharing link format: https://drive.google.com/file/d/FILE_ID/view
+      // Also handles: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+      const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (driveMatch) {
+        const fileId = driveMatch[1];
+        // Use multiple fallback methods for better compatibility
+        // Method 1: uc?export=view (most common, works for public files)
+        const convertedUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+        console.log(`Converting Google Drive link: ${url} -> ${convertedUrl}`);
+        return convertedUrl;
+      }
+      
+      // Also handle shortened Google Drive links
+      const shortMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+      if (shortMatch) {
+        const fileId = shortMatch[1];
+        const convertedUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+        console.log(`Converting Google Drive link: ${url} -> ${convertedUrl}`);
+        return convertedUrl;
+      }
+      
+      // Handle direct file ID in URL
+      const directIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (directIdMatch && url.includes('drive.google.com')) {
+        const fileId = directIdMatch[1];
+        const convertedUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+        console.log(`Converting Google Drive link: ${url} -> ${convertedUrl}`);
+        return convertedUrl;
+      }
+      
+      return url; // Return as-is if not a Google Drive link
+    };
+    
+    // Filter out any empty or invalid URLs, converting Google Drive links
+    const cleanImageUrls = imageUrls
+      .map((url) => convertGoogleDriveLink(url))
+      .filter((url) => {
+        if (!url || typeof url !== 'string' || url.trim().length === 0) return false;
+        // Validate URL format
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+    
+    console.log('Admin: Final image URLs to save:', cleanImageUrls);
+
+    // Pass the image URLs (links) to the service - these will be stored in the database
+    const newsData = {
+      title: createNewsDto.title,
+      summary: createNewsDto.summary,
+      body: createNewsDto.body,
+      tags: tags || [],
+      images: cleanImageUrls, // Array of image URLs (links)
+      status: createNewsDto.status || 'draft',
+    };
+    
+    console.log('Admin: Creating news with image URLs:', newsData.images);
+    const result = await this.newsService.create(newsData, user.id);
+    console.log('Admin: News created, returned images:', result?.images);
+    
+    return result;
   }
 
   @Patch('news/:id')
@@ -137,35 +203,88 @@ export class AdminController {
       }
     }
 
-    // Upload new images if provided
     let imageUrls: string[] = [];
-    if (files && files.length > 0) {
+    
+    // Check if images are provided as URLs (from admin panel) or files
+    if (updateNewsDto.images && Array.isArray(updateNewsDto.images)) {
+      // Images provided as URLs directly (simpler flow)
+      imageUrls = updateNewsDto.images.filter((url: any) => url && typeof url === 'string' && url.trim().length > 0);
+      console.log('Admin: Received image URLs directly for update:', imageUrls);
+    } else if (files && files.length > 0) {
+      // Files uploaded - upload to Cloudinary and get URLs
       for (const file of files) {
         try {
           const uploaded = await this.mediaService.uploadFile(file, user.id);
-          imageUrls.push(uploaded.url);
+          if (uploaded?.url && typeof uploaded.url === 'string' && uploaded.url.trim().length > 0) {
+            imageUrls.push(uploaded.url);
+          }
         } catch (error) {
           console.error('Failed to upload image:', error);
         }
       }
-    }
-
-    // Parse existing images if provided (as JSON string from FormData)
-    let existingImages: string[] = [];
-    if (updateNewsDto.existingImages) {
-      try {
-        existingImages = typeof updateNewsDto.existingImages === 'string' 
-          ? JSON.parse(updateNewsDto.existingImages)
-          : Array.isArray(updateNewsDto.existingImages)
-          ? updateNewsDto.existingImages
-          : [];
-      } catch {
-        existingImages = [];
+      
+      // Parse existing images if provided (as JSON string from FormData)
+      let existingImages: string[] = [];
+      if (updateNewsDto.existingImages) {
+        try {
+          const parsed = typeof updateNewsDto.existingImages === 'string' 
+            ? JSON.parse(updateNewsDto.existingImages)
+            : Array.isArray(updateNewsDto.existingImages)
+            ? updateNewsDto.existingImages
+            : [];
+          existingImages = parsed.filter((url: any) => url && typeof url === 'string' && url.trim().length > 0);
+        } catch {
+          existingImages = [];
+        }
       }
+      
+      // Combine existing images with newly uploaded ones
+      imageUrls = [...existingImages, ...imageUrls];
     }
 
-    // Combine existing images with newly uploaded ones
-    const allImages = [...existingImages, ...imageUrls];
+    // Convert Google Drive links to direct image URLs and validate
+    const convertGoogleDriveLink = (url: string): string => {
+      if (!url || typeof url !== 'string') return url;
+      
+      // Match Google Drive sharing link format: https://drive.google.com/file/d/FILE_ID/view
+      // Also handles: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+      const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (driveMatch) {
+        const fileId = driveMatch[1];
+        return `https://drive.google.com/uc?export=view&id=${fileId}`;
+      }
+      
+      // Also handle shortened Google Drive links
+      const shortMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+      if (shortMatch) {
+        const fileId = shortMatch[1];
+        return `https://drive.google.com/uc?export=view&id=${fileId}`;
+      }
+      
+      // Handle direct file ID in URL
+      const directIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (directIdMatch && url.includes('drive.google.com')) {
+        const fileId = directIdMatch[1];
+        return `https://drive.google.com/uc?export=view&id=${fileId}`;
+      }
+      
+      return url; // Return as-is if not a Google Drive link
+    };
+    
+    // Filter and validate URLs, converting Google Drive links
+    const allImages = imageUrls
+      .map((url) => convertGoogleDriveLink(url))
+      .filter((url) => {
+        if (!url || typeof url !== 'string' || url.trim().length === 0) return false;
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+    
+    console.log('Admin: Updating news with images:', allImages);
 
     // Build update object
     const updateData: any = {};

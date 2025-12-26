@@ -12,7 +12,6 @@ import {
 import { NewsService } from '../services/news.service';
 import { CreateNewsDto } from '../dto/create-news.dto';
 import { UpdateNewsDto } from '../dto/update-news.dto';
-import { CreateCommentDto } from '../dto/create-comment.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -40,7 +39,7 @@ export class NewsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string, @CurrentUser() user?: any) {
     return this.newsService.findOne(id);
   }
 
@@ -48,7 +47,7 @@ export class NewsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'publisher')
   update(@Param('id') id: string, @Body() updateNewsDto: UpdateNewsDto, @CurrentUser() user: any) {
-    return this.newsService.update(id, updateNewsDto, user.id);
+    return this.newsService.update(id, updateNewsDto, user.id, user.role);
   }
 
   @Delete(':id')
@@ -65,20 +64,6 @@ export class NewsController {
     return this.newsService.publish(id, user.id);
   }
 
-  @Get(':id/comments')
-  getComments(@Param('id') id: string, @Query() query: any) {
-    return this.newsService.getComments(
-      id,
-      query.limit ? parseInt(query.limit) : 20,
-      query.offset ? parseInt(query.offset) : 0,
-    );
-  }
-
-  @Post(':id/comments')
-  @UseGuards(JwtAuthGuard)
-  addComment(@Param('id') id: string, @Body() createCommentDto: CreateCommentDto, @CurrentUser() user: any) {
-    return this.newsService.addComment(id, user.id, createCommentDto);
-  }
 
   @Post(':id/reactions')
   @UseGuards(JwtAuthGuard)

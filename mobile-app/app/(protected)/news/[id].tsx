@@ -1,26 +1,21 @@
 import { useLocalSearchParams, useRouter, Link } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  useAddNewsComment,
   useBookmarkNews,
-  useNewsComments,
   useNewsDetail,
   useReactToNews,
   useTranslateNews,
 } from '../../../src/features/news/hooks/useNews';
 import { NewsDetailContent } from '../../../src/features/news/components/NewsDetailContent';
-import { NewsComments } from '../../../src/features/news/components/NewsComments';
 import { colors } from '../../../src/config/colors';
 
 export default function NewsDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const newsQuery = useNewsDetail(params.id);
-  const commentsQuery = useNewsComments(params.id);
   const reactMutation = useReactToNews(params.id);
   const bookmarkMutation = useBookmarkNews(params.id);
   const translateMutation = useTranslateNews(params.id);
-  const commentMutation = useAddNewsComment(params.id);
 
   if (newsQuery.isLoading) {
     return (
@@ -42,35 +37,38 @@ export default function NewsDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <NewsDetailContent
-          news={news}
-          onReact={(value) => reactMutation.mutate(value)}
-          onBookmark={() => bookmarkMutation.mutate()}
-          onTranslate={(lang) => translateMutation.mutate(lang)}
-        />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={true}
+        >
+          <NewsDetailContent
+            news={news}
+            onReact={(value) => reactMutation.mutate(value)}
+            onBookmark={() => bookmarkMutation.mutate()}
+            onTranslate={(lang) => translateMutation.mutate(lang)}
+          />
 
-        <NewsComments
-          comments={commentsQuery.data ?? []}
-          onSubmit={async (body) => {
-            await commentMutation.mutateAsync(body);
-            commentsQuery.refetch();
-          }}
-        />
 
-        {news.related?.length ? (
-          <View style={{ marginTop: 24 }}>
-            <Text style={styles.relatedHeading}>Related news</Text>
-            {news.related.map((related) => (
-              <Link key={related.id} href={`/(protected)/news/${related.id}`} asChild>
-                <TouchableOpacity style={styles.relatedItem}>
-                  <Text style={styles.relatedItemText}>• {related.title}</Text>
-                </TouchableOpacity>
-              </Link>
-            ))}
-          </View>
-        ) : null}
-      </ScrollView>
+          {news.related?.length ? (
+            <View style={{ marginTop: 24 }}>
+              <Text style={styles.relatedHeading}>Related news</Text>
+              {news.related.map((related) => (
+                <Link key={related.id} href={`/(protected)/news/${related.id}`} asChild>
+                  <TouchableOpacity style={styles.relatedItem}>
+                    <Text style={styles.relatedItemText}>• {related.title}</Text>
+                  </TouchableOpacity>
+                </Link>
+              ))}
+            </View>
+          ) : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -80,9 +78,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   container: {
     padding: 24,
     paddingTop: 16,
+    paddingBottom: 100, // Extra padding at bottom for keyboard
     gap: 16,
     backgroundColor: '#fff',
   },

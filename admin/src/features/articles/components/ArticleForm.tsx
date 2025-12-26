@@ -11,6 +11,7 @@ import { useCreateArticle, useUpdateArticle, useArticle } from "../hooks/useArti
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
 import { X, Upload } from "lucide-react";
+import { uploadImageToCloudinary } from "@/services/cloudinary";
 
 const articleSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -33,7 +34,6 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
   const updateMutation = useUpdateArticle();
 
   const [images, setImages] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
   const {
@@ -57,27 +57,17 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
       const articleImages = existingArticle.images || (existingArticle.cover_image ? [existingArticle.cover_image] : []);
       setImages(articleImages);
       setValue("images", articleImages);
-      setImageFiles([]);
     }
   }, [existingArticle, setValue]);
 
-  // Cleanup object URLs on unmount
-  useEffect(() => {
-    return () => {
-      images.forEach((url) => {
-        if (url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
-        }
-      });
-    };
-  }, [images]);
 
-  const handleImageSelect = (files: FileList | null) => {
+  const handleImageSelect = async (files: FileList | null) => {
     if (!files) return;
 
     const newFiles: File[] = [];
-    const remainingSlots = 4 - imageFiles.length;
+    const remainingSlots = 4 - images.length;
 
+    // Validate files
     for (let i = 0; i < Math.min(files.length, remainingSlots); i++) {
       const file = files[i];
       if (!file.type.startsWith("image/")) {
@@ -93,143 +83,86 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
 
     if (newFiles.length === 0) return;
 
-    const updatedFiles = [...imageFiles, ...newFiles].slice(0, 4);
-    setImageFiles(updatedFiles);
+    // Upload files directly to Cloudinary
+    setUploading(true);
+    const uploadedUrls: string[] = [];
 
-    // Create preview URLs
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-    const updatedPreviews = [...images, ...newPreviews].slice(0, 4);
-    setImages(updatedPreviews);
+    try {
+      for (const file of newFiles) {
+        try {
+          const result = await uploadImageToCloudinary({
+            file,
+            folder: "hamere-trufat/articles",
+            onProgress: (progress) => {
+              // Could show individual progress here
+            },
+          });
+          uploadedUrls.push(result.secure_url);
+        } catch (error) {
+          console.error(`Failed to upload ${file.name}:`, error);
+          toast.error(`Failed to upload ${file.name}`);
+        }
+      }
 
-    if (updatedFiles.length >= 4) {
-      toast.info("Maximum 4 images reached");
-    } else {
-      toast.success(`${newFiles.length} image(s) added`);
+      if (uploadedUrls.length > 0) {
+        const updatedImages = [...images, ...uploadedUrls].slice(0, 4);
+        setImages(updatedImages);
+        setValue("images", updatedImages);
+
+        if (updatedImages.length >= 4) {
+          toast.info("Maximum 4 images reached");
+        } else {
+          toast.success(`${uploadedUrls.length} image(s) uploaded successfully`);
+        }
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload images");
+    } finally {
+      setUploading(false);
     }
   };
 
   const removeImage = (index: number) => {
-    const isBlobUrl = images[index]?.startsWith("blob:");
-    
-    if (isBlobUrl) {
-      const newFiles = imageFiles.filter((_, i) => i !== index);
-      const newPreviews = images.filter((_, i) => i !== index);
-      URL.revokeObjectURL(images[index]);
-      setImageFiles(newFiles);
-      setImages(newPreviews);
-    } else {
-      const newPreviews = images.filter((_, i) => i !== index);
-      setImages(newPreviews);
-    }
+    const newImages = images.filter((_, i) => i !== index);
+    setImages(newImages);
+    setValue("images", newImages);
   };
 
   const onSubmit = async (data: ArticleFormData) => {
     try {
-      setUploading(true);
       const keywords = data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
 
-      const tokens = useAuthStore.getState().tokens;
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
-
       if (articleId) {
-        // Update article
-        if (imageFiles.length > 0) {
-          // Has new files to upload
-          const formData = new FormData();
-          formData.append("title", data.title);
-          formData.append("excerpt", data.excerpt);
-          formData.append("content", data.content);
-          formData.append("keywords", JSON.stringify(keywords));
-          
-          // Get existing image URLs (not blob URLs)
-          const existingImageUrls = images.filter((img) => !img.startsWith("blob:"));
-          if (existingImageUrls.length > 0) {
-            formData.append("existingImages", JSON.stringify(existingImageUrls));
-          }
-          
-          // Append new image files
-          imageFiles.forEach((file) => {
-            formData.append("images", file);
-          });
-
-          const response = await fetch(`${API_URL}/admin/articles/${articleId}`, {
-            method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${tokens?.accessToken}`,
-            },
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || "Failed to update article");
-          }
-
-          toast.success("Article updated successfully");
-        } else {
-          // No new files, update with existing image URLs only
-          const existingImageUrls = images.filter((img) => !img.startsWith("blob:"));
-          await updateMutation.mutateAsync({
-            id: articleId,
-            data: {
-              title: data.title,
-              excerpt: data.excerpt,
-              content: data.content,
-              images: existingImageUrls,
-              keywords,
-            },
-          });
-          toast.success("Article updated successfully");
-        }
-      } else {
-        // Create article
-        if (imageFiles.length > 0) {
-          // Has files to upload
-          const formData = new FormData();
-          formData.append("title", data.title);
-          formData.append("excerpt", data.excerpt);
-          formData.append("content", data.content);
-          formData.append("keywords", JSON.stringify(keywords));
-          
-          // Append image files
-          imageFiles.forEach((file) => {
-            formData.append("images", file);
-          });
-
-          const response = await fetch(`${API_URL}/admin/articles`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${tokens?.accessToken}`,
-            },
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || "Failed to create article");
-          }
-
-          toast.success("Article created successfully");
-        } else {
-          // No files, create without images
-          await createMutation.mutateAsync({
+        // Update article - images are already uploaded URLs
+        await updateMutation.mutateAsync({
+          id: articleId,
+          data: {
             title: data.title,
             excerpt: data.excerpt,
             content: data.content,
+            images: images, // Already Cloudinary URLs
             keywords,
-          });
-          toast.success("Article created successfully");
-        }
+          },
+        });
+        toast.success("Article updated successfully");
+      } else {
+        // Create article - images are already uploaded URLs
+        await createMutation.mutateAsync({
+          title: data.title,
+          excerpt: data.excerpt,
+          content: data.content,
+          images: images, // Already Cloudinary URLs
+          keywords,
+        });
+        toast.success("Article created successfully");
       }
       reset();
       setImages([]);
-      setImageFiles([]);
       onSuccess?.();
     } catch (error) {
       console.error("Failed to save article", error);
       toast.error("Failed to save article");
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -263,56 +196,86 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
 
       {/* Image Upload Section */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">Images (up to 4)</label>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-          <input
-            type="file"
-            id="image-upload"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => handleImageSelect(e.target.files)}
-            disabled={images.length >= 4 || isPending}
-          />
-          <label
-            htmlFor="image-upload"
-            className={`cursor-pointer flex flex-col items-center gap-2 ${
-              images.length >= 4 || isPending ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            <Upload className="w-8 h-8 text-gray-400" />
-            <span className="text-sm text-gray-600">
-              {images.length >= 4
-                ? "Maximum 4 images reached"
-                : "Click to upload or drag and drop"}
-            </span>
-            <span className="text-xs text-gray-500">
-              PNG, JPG, GIF up to 10MB each
-            </span>
-          </label>
-        </div>
-
+        <label className="text-sm font-medium">Photos / Images (up to 4) *</label>
+        <p className="text-xs text-gray-500 mb-3">
+          Upload photos to display with your article. These will appear in the mobile app.
+        </p>
+        
         {/* Image Previews */}
         {images.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {images.map((imageUrl, index) => (
               <div key={index} className="relative group">
                 <img
                   src={imageUrl}
                   alt={`Preview ${index + 1}`}
-                  className="w-full h-32 object-cover rounded-lg"
+                  className="w-full h-40 object-cover rounded-lg border-2 border-gray-300 shadow-sm"
+                  onError={(e) => {
+                    // Fallback if image fails to load
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
+                  }}
                 />
                 <button
                   type="button"
                   onClick={() => removeImage(index)}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1.5 shadow-lg opacity-100 group-hover:opacity-100 transition-opacity hover:bg-red-700 z-10"
                   disabled={isPending}
+                  title="Remove image"
                 >
                   <X className="w-4 h-4" />
                 </button>
+                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-b-lg">
+                  Image {index + 1}
+                </div>
               </div>
             ))}
           </div>
+        )}
+
+        {images.length < 4 && (
+          <div className="border-2 border-dashed border-blue-400 rounded-lg p-6 text-center bg-blue-50 hover:bg-blue-100 transition-colors">
+            <input
+              type="file"
+              id="image-upload"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                handleImageSelect(e.target.files);
+                if (e.target) e.target.value = "";
+              }}
+              disabled={images.length >= 4 || isPending}
+            />
+            <label
+              htmlFor="image-upload"
+              className={`cursor-pointer flex flex-col items-center gap-2 ${
+                images.length >= 4 || isPending ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              <Upload className="w-10 h-10 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                <span className="text-blue-600">Click to upload photos</span> or drag and drop
+              </span>
+              <span className="text-xs text-gray-600">
+                PNG, JPG, GIF up to 10MB each
+              </span>
+              <span className="text-xs font-medium text-blue-600 mt-1">
+                {images.length} / 4 images selected
+              </span>
+            </label>
+          </div>
+        )}
+
+        {images.length >= 4 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="text-sm text-yellow-800 font-medium">
+              ✓ Maximum 4 images reached. Remove an image to add more.
+            </p>
+          </div>
+        )}
+
+        {uploading && (
+          <p className="text-sm text-blue-600 font-medium">Uploading images...</p>
         )}
       </div>
 

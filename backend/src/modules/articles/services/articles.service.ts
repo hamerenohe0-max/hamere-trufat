@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../../../common/supabase/supabase.service';
 import { CreateArticleDto } from '../dto/create-article.dto';
 import slugify from 'slugify';
@@ -33,7 +33,10 @@ export class ArticlesService {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Error creating article:', error);
+      throw new InternalServerErrorException(`Failed to create article: ${error.message}`);
+    }
     return data;
   }
 
@@ -54,7 +57,7 @@ export class ArticlesService {
     return { items: (data || []) as any[], total: count || 0, limit, offset };
   }
 
-  async findOne(id: string): Promise<any> {
+  async findOne(id: string, userId?: string): Promise<any> {
     const { data: article, error } = await this.supabase.client
       .from('articles')
       .select('*, author:users(id, name, profile, role)')
@@ -65,13 +68,45 @@ export class ArticlesService {
       throw new NotFoundException(`Article with ID ${id} not found`);
     }
 
+    // Get user reaction if userId provided
+    let userReaction: 'like' | 'dislike' | null = null;
+    if (userId) {
+      const { data: reaction } = await (this.supabase.client
+        .from('article_reactions' as any)
+        .select('reaction')
+        .eq('article_id', id)
+        .eq('user_id', userId)
+        .single() as any);
+      if (reaction) userReaction = reaction.reaction;
+    }
+
+    // Get bookmark status if userId provided
+    let bookmarked = false;
+    if (userId) {
+      const { data: bookmark } = await this.supabase.client
+        .from('article_bookmarks')
+        .select('id')
+        .eq('article_id', id)
+        .eq('user_id', userId)
+        .single() as any;
+      bookmarked = !!bookmark;
+    }
+
     // Increment views
     this.supabase.client
       .from('articles')
       .update({ views: ((article as any).views || 0) + 1 } as any)
       .eq('id', id);
 
-    return article;
+    return {
+      ...article,
+      reactions: {
+        likes: (article as any).likes || 0,
+        dislikes: (article as any).dislikes || 0,
+        userReaction,
+      },
+      bookmarked,
+    };
   }
 
   async findBySlug(slug: string): Promise<any> {
@@ -94,9 +129,11 @@ export class ArticlesService {
     return article;
   }
 
-  async update(id: string, updateDto: Partial<CreateArticleDto>, userId: string): Promise<any> {
+  async update(id: string, updateDto: Partial<CreateArticleDto>, userId: string, userRole?: string): Promise<any> {
     const article = await this.findOne(id);
-    if (article.author_id !== userId) {
+    // Admins can update any article, publishers can only update their own
+    // If userRole is undefined, default to publisher behavior for safety
+    if (userRole !== 'admin' && article.author_id !== userId) {
       throw new ForbiddenException('You can only update your own articles');
     }
 
@@ -107,13 +144,17 @@ export class ArticlesService {
     }
 
     // Handle images array
+    // NOTE: If you get "Could not find the 'images' column" error,
+    // run the migration: backend/apply-migrations.sql in Supabase SQL Editor
     if (updateDto.images !== undefined) {
+      // Only update images if the column exists (migration has been run)
+      // If migration hasn't been run, this will fail - see APPLY_ARTICLES_IMAGES_MIGRATION.md
       updates.images = updateDto.images;
       // Also update cover_image to first image for backward compatibility
       updates.cover_image = updateDto.images.length > 0 ? updateDto.images[0] : null;
     } else if (updateDto.coverImage !== undefined) {
-      // If only coverImage is provided, convert to images array
-      updates.images = updateDto.coverImage ? [updateDto.coverImage] : [];
+      // If only coverImage is provided, update cover_image
+      // Don't set images array here to avoid migration requirement
       updates.cover_image = updateDto.coverImage;
     }
     
@@ -136,7 +177,10 @@ export class ArticlesService {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Error updating article:', error);
+      throw new InternalServerErrorException(`Failed to update article: ${error.message}`);
+    }
     return data;
   }
 
@@ -146,6 +190,57 @@ export class ArticlesService {
       throw new ForbiddenException('You can only delete your own articles');
     }
     await this.supabase.client.from('articles').delete().eq('id', id);
+  }
+
+  async toggleReaction(articleId: string, userId: string, reaction: 'like' | 'dislike'): Promise<any> {
+    const article = await this.findOne(articleId);
+    
+    const { data: existing } = await (this.supabase.client
+      .from('article_reactions' as any)
+      .select('*')
+      .eq('article_id', articleId)
+      .eq('user_id', userId)
+      .single() as any);
+
+    let likes = (article as any).likes || 0;
+    let dislikes = (article as any).dislikes || 0;
+
+    if (existing) {
+      if (existing.reaction === reaction) {
+        // Remove reaction
+        await (this.supabase.client.from('article_reactions' as any).delete().eq('id', existing.id) as any);
+        if (reaction === 'like') likes = Math.max(0, likes - 1);
+        else dislikes = Math.max(0, dislikes - 1);
+      } else {
+        // Change reaction
+        await (this.supabase.client.from('article_reactions' as any).update({ reaction } as any).eq('id', existing.id) as any);
+        if (reaction === 'like') {
+          likes += 1;
+          dislikes = Math.max(0, dislikes - 1);
+        } else {
+          dislikes += 1;
+          likes = Math.max(0, likes - 1);
+        }
+      }
+    } else {
+      // Add new reaction
+      await (this.supabase.client.from('article_reactions' as any).insert({
+        article_id: articleId,
+        user_id: userId,
+        reaction,
+      } as any) as any);
+      if (reaction === 'like') likes += 1;
+      else dislikes += 1;
+    }
+
+    const { data: updated } = await this.supabase.client
+      .from('articles')
+      .update({ likes, dislikes } as any)
+      .eq('id', articleId)
+      .select()
+      .single();
+
+    return { ...updated, likes, dislikes, userReaction: reaction };
   }
 
   async toggleBookmark(articleId: string, userId: string): Promise<{ bookmarked: boolean }> {

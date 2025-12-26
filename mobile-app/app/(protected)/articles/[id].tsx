@@ -6,19 +6,24 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Share,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useArticleDetail,
   useBookmarkArticle,
+  useReactToArticle,
 } from '../../../src/features/articles/hooks/useArticles';
 import { AuthorCard } from '../../../src/features/articles/components/AuthorCard';
 import { ArticleImageGallery } from '../../../src/features/articles/components/ArticleImageGallery';
+import { colors } from '../../../src/config/colors';
 import * as Haptics from 'expo-haptics';
 
 export default function ArticleDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const articleQuery = useArticleDetail(params.id);
   const bookmarkMutation = useBookmarkArticle(params.id);
+  const reactMutation = useReactToArticle(params.id);
 
   if (articleQuery.isLoading) {
     return (
@@ -39,74 +44,102 @@ export default function ArticleDetailScreen() {
   const article = articleQuery.data;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>{article.title}</Text>
-      <View style={styles.metaContainer}>
-        {article.author ? (
-          <Link href={`/(protected)/articles/author/${article.author.id}`} asChild>
-            <TouchableOpacity>
-              <Text style={styles.authorName}>{article.author.name}</Text>
-            </TouchableOpacity>
-          </Link>
-        ) : (
-          <Text style={styles.meta}>Hamere Trufat</Text>
-        )}
-        <Text style={styles.meta}> • {article.readingTime}</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.heading}>{article.title}</Text>
+        <View style={styles.metaContainer}>
+          {article.author ? (
+            <Link href={`/(protected)/articles/author/${article.author.id}`} asChild>
+              <TouchableOpacity>
+                <Text style={styles.authorName}>{article.author.name}</Text>
+              </TouchableOpacity>
+            </Link>
+          ) : (
+            <Text style={styles.meta}>Hamere Trufat</Text>
+          )}
+          <Text style={styles.meta}> • {article.readingTime}</Text>
+        </View>
 
       <View style={styles.actions}>
         <TouchableOpacity
-          style={styles.action}
+          style={[styles.reaction, article.reactions?.userReaction === 'like' && styles.reactionActive]}
+          onPress={() => {
+            reactMutation.mutate('like');
+            Haptics.selectionAsync();
+          }}
+        >
+          <Text style={styles.reactionText}>
+            👍 {article.reactions?.likes || 0}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.reaction, article.reactions?.userReaction === 'dislike' && styles.reactionActive]}
+          onPress={() => {
+            reactMutation.mutate('dislike');
+            Haptics.selectionAsync();
+          }}
+        >
+          <Text style={styles.reactionText}>
+            👎 {article.reactions?.dislikes || 0}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.reaction}
+          onPress={async () => {
+            try {
+              await Share.share({
+                message: `${article.title}\n\n${article.excerpt || article.content.substring(0, 200)}...`,
+              });
+            } catch (error) {
+              console.error('Error sharing:', error);
+            }
+          }}
+        >
+          <Text style={styles.reactionText}>Share</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.reaction}
           onPress={() => {
             bookmarkMutation.mutate();
             Haptics.selectionAsync();
           }}
         >
-          <Text style={styles.actionText}>
-            {bookmarkMutation.isSuccess && bookmarkMutation.data
-              ? bookmarkMutation.data.bookmarked
-                ? '★ Bookmarked'
-                : '☆ Bookmark'
-              : article.bookmarked
-                ? '★ Bookmarked'
-                : '☆ Bookmark'}
+          <Text style={styles.reactionText}>
+            {article.bookmarked ? '★ Bookmarked' : '☆ Bookmark'}
           </Text>
         </TouchableOpacity>
-        {article.author && (
-          <Link
-            href={`/(protected)/articles/author/${article.author.id}`}
-            asChild
-          >
-            <TouchableOpacity style={styles.authorLink}>
-              <Text style={styles.authorLinkText}>View author</Text>
-            </TouchableOpacity>
-          </Link>
+      </View>
+
+        <AuthorCard author={article.author} />
+
+        {/* Display article images */}
+        {article.images && article.images.length > 0 && (
+          <ArticleImageGallery images={article.images} maxDisplay={4} />
         )}
-      </View>
 
-      <AuthorCard author={article.author} />
+        <Text style={styles.content}>{article.content}</Text>
 
-      {/* Display article images */}
-      {article.images && article.images.length > 0 && (
-        <ArticleImageGallery images={article.images} maxDisplay={4} />
-      )}
-
-      <Text style={styles.content}>{article.content}</Text>
-
-      <View style={styles.keywords}>
-        {article.keywords.map((keyword) => (
-          <View key={keyword} style={styles.keyword}>
-            <Text style={styles.keywordText}>#{keyword}</Text>
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+        <View style={styles.keywords}>
+          {article.keywords.map((keyword) => (
+            <View key={keyword} style={styles.keyword}>
+              <Text style={styles.keywordText}>#{keyword}</Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     padding: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
     gap: 16,
     backgroundColor: '#fff',
   },
@@ -137,29 +170,22 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
     alignItems: 'center',
   },
-  action: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+  reaction: {
     borderWidth: 1,
     borderColor: '#cbd5f5',
-  },
-  actionText: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  authorLink: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#cbd5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  authorLinkText: {
-    color: '#2563eb',
+  reactionActive: {
+    backgroundColor: colors.primary.main,
+  },
+  reactionText: {
+    color: colors.primary.darkest,
     fontWeight: '600',
   },
   content: {

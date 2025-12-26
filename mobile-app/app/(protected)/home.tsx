@@ -16,6 +16,7 @@ import { useEvents } from '../../src/features/events/hooks/useEvents';
 import { useDailyReading } from '../../src/features/readings/hooks/useDailyReading';
 import { useArticlesList } from '../../src/features/articles/hooks/useArticles';
 import { colors } from '../../src/config/colors';
+import { formatSimpleDate, formatEventDate } from '../../src/utils/dateFormat';
 // import { Ionicons } from '@expo/vector-icons'; // Assuming standard expo vector icons
 
 export default function HomeScreen() {
@@ -104,20 +105,42 @@ export default function HomeScreen() {
         </View>
         
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-          {newsQuery.data?.slice(0, 5).map((news) => (
+          {newsQuery.data?.slice(0, 5).map((news) => {
+            // Get images from images array or fall back to coverImage
+            let newsImages: string[] = [];
+            if (news.images && Array.isArray(news.images) && news.images.length > 0) {
+              newsImages = news.images.filter((img) => img && typeof img === 'string' && img.trim().length > 0);
+            }
+            if (newsImages.length === 0 && news.coverImage && typeof news.coverImage === 'string' && news.coverImage.trim().length > 0) {
+              newsImages = [news.coverImage];
+            }
+            const coverImage = newsImages.length > 0 ? newsImages[0] : null;
+            
+            return (
              <Link key={news.id} href={`/(protected)/news/${news.id}`} asChild>
                <TouchableOpacity style={styles.newsCard}>
-                  {/* Image placeholder if needed */}
-                  <View style={styles.newsImagePlaceholder} />
+                  {coverImage ? (
+                    <Image 
+                      source={{ uri: coverImage }} 
+                      style={styles.newsImage}
+                      resizeMode="cover"
+                      onError={(error) => {
+                        console.error('News image load error on home:', error.nativeEvent.error);
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.newsImagePlaceholder} />
+                  )}
                   <View style={styles.newsContent}>
                     <Text style={styles.newsTitle} numberOfLines={2}>{news.title}</Text>
                     <Text style={styles.newsDate}>
-                      {new Date(news.publishedAt || news.createdAt).toLocaleDateString()}
+                      {formatSimpleDate(news.publishedAt || news.createdAt)}
                     </Text>
                   </View>
                </TouchableOpacity>
              </Link>
-          ))}
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -184,7 +207,7 @@ export default function HomeScreen() {
               <View style={styles.eventDateBox}>
                 <Text style={styles.eventDay}>{new Date(event.startDate).getDate()}</Text>
                 <Text style={styles.eventMonth}>
-                  {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short' })}
+                  {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </Text>
               </View>
               <View style={styles.eventDetails}>
@@ -293,7 +316,8 @@ const styles = StyleSheet.create({
     paddingRight: 24,
   },
   newsCard: {
-    width: 250,
+    width: 280,
+    marginRight: 16,
     backgroundColor: '#fff',
     borderRadius: 16,
     overflow: 'hidden',
@@ -302,6 +326,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
     elevation: 3,
+  },
+  newsImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    marginBottom: 8,
   },
   newsImagePlaceholder: {
     width: '100%',

@@ -16,6 +16,12 @@ JWT_EXPIRES_IN=1h
 JWT_REFRESH_EXPIRES_IN=7d
 PORT=4000
 CORS_ORIGIN=http://localhost:3000,http://localhost:19006
+SUPABASE_URL=https://obcvkqtgdhohkrjdhdmk.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9iY3ZrcXRnZGhvaGtyamRoZG1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzODI2MTksImV4cCI6MjA4MTk1ODYxOX0.EJ2D1N5L2bGj1N_qyiL2g6LaHBleqgZEx3Sc2J-p6TE
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9iY3ZrcXRnZGhvaGtyamRoZG1rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjM4MjYxOSwiZXhwIjoyMDgxOTU4NjE5fQ.D6TPH3i32zJujLoSegpMIFwtnKjZpRAJ60CqDFbJ5_M
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 "@ | Out-File -FilePath $backendEnv -Encoding utf8
     Write-Host "✅ Created backend/.env" -ForegroundColor Green
 } else {

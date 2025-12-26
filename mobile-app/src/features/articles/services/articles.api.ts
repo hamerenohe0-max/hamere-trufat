@@ -49,13 +49,22 @@ export const articlesApi = {
     return response.items.map(mapArticleFromBackend);
   },
 
+  react: async (
+    id: string,
+    value: 'like' | 'dislike',
+  ): Promise<{ likes: number; dislikes: number; userReaction: 'like' | 'dislike' | null }> => {
+    return apiFetch(`/articles/${id}/reactions`, {
+      method: 'POST',
+      body: { reaction: value },
+      auth: true,
+    });
+  },
+
   bookmark: async (id: string): Promise<{ bookmarked: boolean }> => {
-    // This probably hits a specific endpoint or generic update
-    // For now, let's assume a toggle endpoint exists or we skip strictly implementing logic if unknown.
-    // We'll trust the user wants the fetch part mostly right now.
-    // Let's mock the return for safe execution or call a likely endpoint
-    // await apiFetch(`/articles/${id}/bookmark`, { method: 'POST' });
-    return { bookmarked: true }; 
+    return apiFetch(`/articles/${id}/bookmark`, {
+      method: 'POST',
+      auth: true,
+    });
   },
 };
 
@@ -81,6 +90,8 @@ function mapArticleFromBackend(data: any): SpiritualArticle {
     tags: data.tags || [],
     relatedEventIds: [], // Backend might not send this yet
     readingTime: '5 min', // Placeholder or calc
+    bookmarked: data.bookmarked || false,
+    reactions: data.reactions || { likes: data.likes || 0, dislikes: data.dislikes || 0, userReaction: null },
     author: data.author ? {
         id: data.author.id,
         name: data.author.name,

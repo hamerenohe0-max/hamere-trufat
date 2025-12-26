@@ -84,7 +84,7 @@ export default function DailyReadingsScreen() {
   };
 
   async function toggleAudio() {
-    if (!reading?.gospel.audioUrl) return;
+    if (!reading?.gospel?.audioUrl) return;
     if (sound) {
       const status = await sound.getStatusAsync();
       if (status.isLoaded && status.isPlaying) {
@@ -240,20 +240,32 @@ export default function DailyReadingsScreen() {
         <ActivityIndicator size="large" color={colors.primary.main} />
       ) : reading ? (
         <View style={{ gap: 16 }}>
-          <ReadingSection title="Gospel" body={reading.gospel.body} reference={reading.gospel.reference} />
-          <TouchableOpacity style={styles.audioButton} onPress={toggleAudio}>
-            <Text style={styles.audioText}>▶ Play audio</Text>
-          </TouchableOpacity>
-          <ReadingSection title="Epistle" body={reading.epistle.body} reference={reading.epistle.reference} />
-          <ReadingSection title="Psalms" body={reading.psalms.join('\n')} />
-          <ReadingSection title="Reflections" body={reading.reflections.join('\n\n')} />
+          {reading.gospel?.body && (
+            <ReadingSection title="Gospel" body={reading.gospel.body} reference={reading.gospel.reference} />
+          )}
+          {reading.gospel?.audioUrl && (
+            <TouchableOpacity style={styles.audioButton} onPress={toggleAudio}>
+              <Text style={styles.audioText}>▶ Play audio</Text>
+            </TouchableOpacity>
+          )}
+          {reading.epistle?.body && (
+            <ReadingSection title="Epistle" body={reading.epistle.body} reference={reading.epistle.reference} />
+          )}
+          {reading.psalms && reading.psalms.length > 0 && (
+            <ReadingSection title="Psalms" body={reading.psalms.join('\n')} />
+          )}
+          {reading.reflections && reading.reflections.length > 0 && (
+            <ReadingSection title="Reflections" body={reading.reflections.join('\n\n')} />
+          )}
 
           <View style={styles.actions}>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() =>
                 Share.share({
-                  message: `${reading.gospel.title}\n${reading.gospel.reference}\n\n${reading.gospel.body}`,
+                  message: reading.gospel?.body 
+                    ? `${reading.gospel.title || 'Gospel'}\n${reading.gospel.reference || ''}\n\n${reading.gospel.body}`
+                    : 'Daily Reading',
                 })
               }
             >

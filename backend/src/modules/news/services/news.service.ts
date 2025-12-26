@@ -1,8 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../../../common/supabase/supabase.service';
 import { CreateNewsDto } from '../dto/create-news.dto';
 import { UpdateNewsDto } from '../dto/update-news.dto';
-import { CreateCommentDto } from '../dto/create-comment.dto';
 
 @Injectable()
 export class NewsService {
@@ -71,9 +70,10 @@ export class NewsService {
     return news;
   }
 
-  async update(id: string, updateNewsDto: UpdateNewsDto, userId: string): Promise<any> {
+  async update(id: string, updateNewsDto: UpdateNewsDto, userId: string, userRole?: string): Promise<any> {
     const news = await this.findOne(id);
-    if (news.author_id !== userId) {
+    // Admins can update any news, publishers can only update their own
+    if (userRole !== 'admin' && news.author_id !== userId) {
       throw new ForbiddenException('You can only update your own news');
     }
 
@@ -141,40 +141,6 @@ export class NewsService {
     return data;
   }
 
-  async addComment(newsId: string, userId: string, createCommentDto: CreateCommentDto): Promise<any> {
-    await this.findOne(newsId); // Verify exists
-
-    const { data: comment, error } = await this.supabase.client
-      .from('news_comments')
-      .insert({
-        news_id: newsId,
-        user_id: userId,
-        body: createCommentDto.body,
-      } as any)
-      .select('*, user:users(id, name, profile)')
-      .single();
-
-    if (error) throw new Error(error.message);
-
-    // Increment comments count
-    const { data: newsData } = await this.supabase.client.from('news').select('comments_count').eq('id', newsId).single() as any;
-    if (newsData) {
-      await this.supabase.client.from('news').update({ comments_count: (newsData.comments_count || 0) + 1 } as any).eq('id', newsId);
-    }
-
-    return comment;
-  }
-
-  async getComments(newsId: string, limit = 20, offset = 0) {
-    const { data, count } = await this.supabase.client
-      .from('news_comments')
-      .select('*, user:users(id, name, profile)', { count: 'exact' })
-      .eq('news_id', newsId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    return { items: (data || []) as any[], total: count || 0, limit, offset };
-  }
 
   async toggleReaction(newsId: string, userId: string, reaction: 'like' | 'dislike'): Promise<any> {
     const news = await this.findOne(newsId);
@@ -226,6 +192,7 @@ export class NewsService {
 
     return updated;
   }
+
 
   async toggleBookmark(newsId: string, userId: string): Promise<{ bookmarked: boolean }> {
     await this.findOne(newsId);

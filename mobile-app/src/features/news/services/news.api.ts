@@ -1,5 +1,5 @@
 import { apiFetch } from '../../../services/api';
-import { NewsDetail, NewsItem, NewsComment } from '../../../types/models';
+import { NewsDetail, NewsItem } from '../../../types/models';
 
 interface NewsResponse {
   items: any[];
@@ -14,42 +14,65 @@ export const newsApi = {
 
   detail: async (id: string): Promise<NewsDetail> => {
     const data = await apiFetch<any>(`/news/${id}`);
+    
+    // Debug logging
+    console.log('News detail API response:', {
+      id: data.id,
+      hasImages: !!data.images,
+      imagesType: typeof data.images,
+      imagesValue: data.images,
+      hasCoverImage: !!data.cover_image,
+      coverImage: data.cover_image,
+    });
+    
     const base = mapNewsFromBackend(data);
+    
+    // Ensure images are properly mapped for detail view
+    let images: string[] = [];
+    if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+      images = data.images.filter((img: any) => img && typeof img === 'string' && img.trim().length > 0);
+    }
+    // Fallback to cover_image if images array is empty
+    if (images.length === 0 && data.cover_image && typeof data.cover_image === 'string' && data.cover_image.trim().length > 0) {
+      images = [data.cover_image];
+    }
+    
+    console.log('Mapped images for detail:', images);
+    
     return {
       ...base,
-      content: data.body, // Assuming body is the content
-      comments: [], // Needs separate fetch or backend inclusion
-      reactions: { likes: 0, dislikes: 0 },
+      images: images.length > 0 ? images : base.images, // Use mapped images or fallback to base
+      coverImage: data.cover_image || base.coverImage, // Ensure coverImage is set
+      content: data.body || data.content,
+      reactions: { 
+        likes: data.likes || 0, 
+        dislikes: data.dislikes || 0,
+        userReaction: data.userReaction || null,
+      },
       related: [],
-      bookmarked: false,
+      bookmarked: data.bookmarked || false,
     };
   },
 
-  comments: async (id: string): Promise<NewsComment[]> => {
-    const response = await apiFetch<{ items: any[] }>(`/news/${id}/comments`);
-    return response.items || [];
-  },
 
   react: async (
     id: string,
     value: 'like' | 'dislike',
-  ): Promise<{ likes: number; dislikes: number }> => {
-    return apiFetch(`/news/${id}/react`, {
+  ): Promise<{ likes: number; dislikes: number; userReaction: 'like' | 'dislike' | null }> => {
+    return apiFetch(`/news/${id}/reactions`, {
       method: 'POST',
       body: { reaction: value },
+      auth: true,
     });
   },
 
   bookmark: async (id: string): Promise<{ bookmarked: boolean }> => {
-    return apiFetch(`/news/${id}/bookmark`, { method: 'POST' });
-  },
-
-  addComment: async (id: string, body: string): Promise<NewsComment> => {
-    return apiFetch<NewsComment>(`/news/${id}/comments`, {
+    return apiFetch(`/news/${id}/bookmark`, { 
       method: 'POST',
-      body: { body },
+      auth: true,
     });
   },
+
 
   translate: async (
     id: string,
@@ -67,7 +90,18 @@ export const newsApi = {
 
 function mapNewsFromBackend(data: any): NewsItem {
   // Get images array or fallback to cover_image for backward compatibility
-  const images = data.images || (data.cover_image ? [data.cover_image] : []);
+  // Filter out empty/null values and ensure we have valid image URLs
+  let images: string[] = [];
+  
+  if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+    // Filter out null, undefined, or empty strings
+    images = data.images.filter((img: any) => img && typeof img === 'string' && img.trim().length > 0);
+  }
+  
+  // If no images in array but cover_image exists, use it
+  if (images.length === 0 && data.cover_image && typeof data.cover_image === 'string' && data.cover_image.trim().length > 0) {
+    images = [data.cover_image];
+  }
   
   return {
     id: data.id,
@@ -83,3 +117,4 @@ function mapNewsFromBackend(data: any): NewsItem {
     updatedAt: data.updated_at,
   };
 }
+

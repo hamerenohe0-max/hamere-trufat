@@ -53,7 +53,23 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(detail || "Request failed");
+    let errorMessage = "Request failed";
+    
+    // Try to parse JSON error response
+    try {
+      const errorJson = JSON.parse(detail);
+      // Extract message from structured error response
+      errorMessage = errorJson.message || errorJson.error || detail || errorMessage;
+    } catch {
+      // If not JSON, use the text as-is
+      errorMessage = detail || errorMessage;
+    }
+    
+    // Create error with status code and message
+    const error = new Error(errorMessage);
+    (error as any).status = response.status;
+    (error as any).statusText = response.statusText;
+    throw error;
   }
 
   if (response.status === 204) {

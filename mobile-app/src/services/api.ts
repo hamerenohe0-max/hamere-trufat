@@ -44,7 +44,26 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const detail = await safeRead(response);
-    throw new Error(detail || 'Request failed');
+    let errorMessage = 'Request failed';
+    
+    try {
+      const errorData = JSON.parse(detail);
+      errorMessage = errorData.message || errorData.error || errorMessage;
+    } catch {
+      // If not JSON, use the text as-is or default message
+      errorMessage = detail || errorMessage;
+    }
+    
+    // Provide more specific error messages
+    if (response.status === 401) {
+      errorMessage = 'Please log in to comment';
+    } else if (response.status === 403) {
+      errorMessage = 'You do not have permission to comment';
+    } else if (response.status === 400) {
+      errorMessage = errorMessage || 'Invalid request. Please check your input.';
+    }
+    
+    throw new Error(errorMessage);
   }
 
   if (response.status === 204) {

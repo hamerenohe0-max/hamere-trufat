@@ -29,6 +29,7 @@ const navigation = [
   { name: "Users", href: "/users", icon: Users },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Analytics", href: "/analytics", icon: TrendingUp },
+  { name: "Profile Settings", href: "/profile", icon: Settings },
 ];
 
 export function Sidebar() {

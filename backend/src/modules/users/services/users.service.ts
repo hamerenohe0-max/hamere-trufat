@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { SupabaseService } from '../../../common/supabase/supabase.service';
 import { Database } from '../../../common/supabase/types';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
 import { RecordDeviceDto } from '../dto/record-device.dto';
 
 export interface SafeUser {
@@ -233,6 +234,48 @@ export class UsersService {
       createdAt: user.created_at,
       updatedAt: user.updated_at,
     };
+  }
+
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
+    // Get user with password hash
+    const { data: user, error } = await this.supabase.client
+      .from('users')
+      .select('password_hash')
+      .eq('id', userId)
+      .single();
+
+    if (error || !user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Verify current password
+    if (!user.password_hash) {
+      throw new BadRequestException('Password not set for this account');
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      changePasswordDto.currentPassword,
+      user.password_hash
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(changePasswordDto.newPassword, 12);
+
+    // Update password
+    const { error: updateError } = await this.supabase.client
+      .from('users')
+      .update({ password_hash: newPasswordHash })
+      .eq('id', userId);
+
+    if (updateError) {
+      throw new BadRequestException('Failed to update password');
+    }
+
+    return { success: true, message: 'Password changed successfully' };
   }
 
   toSafeUser(user: any): SafeUser {

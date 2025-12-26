@@ -13,7 +13,8 @@ import { useCreateNews, useUpdateNews, useNews } from "../hooks/useNews";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
-import { X, Upload } from "lucide-react";
+import { X, Upload, Link as LinkIcon } from "lucide-react";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 
 const newsSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -38,9 +39,8 @@ export function NewsForm({ newsId }: NewsFormProps) {
   const createMutation = useCreateNews();
   const updateMutation = useUpdateNews();
 
-  const [images, setImages] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [imageUrls, setImageUrls] = useState<string[]>(['', '', '', '']); // 4 URL input fields
+  const [uploadMode, setUploadMode] = useState<'url' | 'upload'>('upload'); // Toggle between URL and file upload
 
   const {
     register,
@@ -65,158 +65,116 @@ export function NewsForm({ newsId }: NewsFormProps) {
       setValue("tags", existingNews.tags.join(", "));
       setValue("status", existingNews.status);
       const newsImages = existingNews.images || (existingNews.coverImage ? [existingNews.coverImage] : []);
-      // Set existing images (these are URLs, not blob URLs)
-      setImages(newsImages);
+      // Fill URL inputs with existing images
+      const urls = [...newsImages, '', '', '', ''].slice(0, 4);
+      setImageUrls(urls);
       setValue("images", newsImages);
-      setImageFiles([]); // Clear file list when editing existing news (only new uploads go here)
     }
   }, [existingNews, setValue]);
 
-  // Cleanup object URLs on unmount
-  useEffect(() => {
-    return () => {
-      images.forEach((url) => {
-        if (url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
-        }
-      });
-    };
-  }, [images]);
-
-  const handleImageSelect = (files: FileList | null) => {
-    if (!files) return;
-
-    const newFiles: File[] = [];
-    const remainingSlots = 4 - imageFiles.length;
-
-    for (let i = 0; i < Math.min(files.length, remainingSlots); i++) {
-      const file = files[i];
-      if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name} is not an image file`);
-        continue;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name} is too large (max 10MB)`);
-        continue;
-      }
-      newFiles.push(file);
+  // Convert Google Drive sharing links to direct image URLs
+  const convertGoogleDriveLink = (url: string): string => {
+    if (!url || typeof url !== 'string') return url;
+    
+    // Match Google Drive sharing link format: https://drive.google.com/file/d/FILE_ID/view
+    // Also handles: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (driveMatch) {
+      const fileId = driveMatch[1];
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
     }
+    
+    // Also handle shortened Google Drive links
+    const shortMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+    if (shortMatch) {
+      const fileId = shortMatch[1];
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+    
+    // Handle direct file ID in URL
+    const directIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (directIdMatch && url.includes('drive.google.com')) {
+      const fileId = directIdMatch[1];
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+    
+    return url; // Return as-is if not a Google Drive link
+  };
 
-    if (newFiles.length === 0) return;
-
-    const updatedFiles = [...imageFiles, ...newFiles].slice(0, 4);
-    setImageFiles(updatedFiles);
-
-    // Create preview URLs
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-    const updatedPreviews = [...images, ...newPreviews].slice(0, 4);
-    setImages(updatedPreviews);
-
-    if (updatedFiles.length >= 4) {
-      toast.info("Maximum 4 images reached");
-    } else {
-      toast.success(`${newFiles.length} image(s) added`);
+  const handleUrlChange = (index: number, url: string) => {
+    // Automatically convert Google Drive links
+    const convertedUrl = convertGoogleDriveLink(url);
+    
+    const newUrls = [...imageUrls];
+    newUrls[index] = convertedUrl;
+    setImageUrls(newUrls);
+    
+    // Update form value with non-empty URLs
+    const validUrls = newUrls.filter((u) => u && u.trim().length > 0);
+    setValue("images", validUrls);
+    
+    // Show notification if conversion happened
+    if (convertedUrl !== url && url.includes('drive.google.com')) {
+      toast.info("Google Drive link converted to direct image URL");
     }
   };
 
-  const removeImage = (index: number) => {
-    // Check if this is a blob URL (new upload) or regular URL (existing image)
-    const isBlobUrl = images[index]?.startsWith("blob:");
+  const removeImageUrl = (index: number) => {
+    const newUrls = [...imageUrls];
+    newUrls[index] = '';
+    setImageUrls(newUrls);
     
-    if (isBlobUrl) {
-      // Remove from both files and previews
-      const newFiles = imageFiles.filter((_, i) => i !== index);
-      const newPreviews = images.filter((_, i) => i !== index);
-      
-      // Revoke object URL to free memory
-      URL.revokeObjectURL(images[index]);
-      
-      setImageFiles(newFiles);
-      setImages(newPreviews);
-    } else {
-      // Remove existing image URL
-      const newPreviews = images.filter((_, i) => i !== index);
-      setImages(newPreviews);
-    }
+    const validUrls = newUrls.filter((u) => u && u.trim().length > 0);
+    setValue("images", validUrls);
   };
 
   const onSubmit = async (data: NewsFormData) => {
     try {
-      setUploading(true);
       const tags = data.tags.split(",").map((t) => t.trim()).filter(Boolean);
-
-      // Create FormData with files and other data
-      const formData = new FormData();
-      formData.append("title", data.title);
-      formData.append("summary", data.summary);
-      formData.append("body", data.body);
-      formData.append("tags", JSON.stringify(tags));
-      formData.append("status", data.status);
       
-      // Append image files
-      imageFiles.forEach((file) => {
-        formData.append("images", file);
+      // Get valid image URLs (non-empty)
+      const validImageUrls = imageUrls.filter((url) => url && url.trim().length > 0);
+      
+      // Validate URLs
+      const invalidUrls = validImageUrls.filter((url) => {
+        try {
+          new URL(url);
+          return false;
+        } catch {
+          return true;
+        }
       });
-
-      const tokens = useAuthStore.getState().tokens;
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+      
+      if (invalidUrls.length > 0) {
+        toast.error("Please enter valid image URLs (must start with http:// or https://)");
+        return;
+      }
 
       if (newsId) {
-        // For update: if there are new files, upload them and combine with existing images
-        // Otherwise, update with current image list (existing URLs only, no blob URLs)
-        if (imageFiles.length > 0) {
-          // Get existing image URLs (not blob URLs) to preserve them
-          const existingImageUrls = images.filter((img) => !img.startsWith("blob:"));
-          
-          // Send existing images as JSON string in FormData
-          if (existingImageUrls.length > 0) {
-            formData.append("existingImages", JSON.stringify(existingImageUrls));
-          }
-          
-          // Upload new files via FormData
-          const response = await fetch(`${API_URL}/admin/news/${newsId}`, {
-            method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${tokens?.accessToken}`,
-            },
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || "Failed to update news article");
-          }
-        } else {
-          // No new files, update with current image list (existing URLs only, no blob URLs)
-          const existingImageUrls = images.filter((img) => !img.startsWith("blob:"));
-          await updateMutation.mutateAsync({
-            id: newsId,
-            data: {
-              title: data.title,
-              summary: data.summary,
-              body: data.body,
-              tags,
-              images: existingImageUrls,
-              status: data.status,
-            },
-          });
-        }
+        // Update existing news
+        await updateMutation.mutateAsync({
+          id: newsId,
+          data: {
+            title: data.title,
+            summary: data.summary,
+            body: data.body,
+            tags,
+            images: validImageUrls, // Send URLs directly
+            status: data.status,
+          },
+        });
         toast.success("News article updated successfully");
       } else {
-        // For create, always use FormData with files
-        const response = await fetch(`${API_URL}/admin/news`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${tokens?.accessToken}`,
-          },
-          body: formData,
+        // Create new news
+        await createMutation.mutateAsync({
+          title: data.title,
+          summary: data.summary,
+          body: data.body,
+          tags,
+          images: validImageUrls, // Send URLs directly
+          status: data.status,
+          authorId: user?.id || "",
         });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || "Failed to create news article");
-        }
-
         toast.success("News article created successfully");
       }
 
@@ -224,8 +182,6 @@ export function NewsForm({ newsId }: NewsFormProps) {
     } catch (error) {
       toast.error(newsId ? "Failed to update news article" : "Failed to create news article");
       console.error(error);
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -275,71 +231,99 @@ export function NewsForm({ newsId }: NewsFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Images (up to 4)
-            </label>
-            <div className="space-y-4">
-              {images.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  {images.map((imageUrl, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={imageUrl}
-                        alt={`News image ${index + 1}`}
-                        className="w-32 h-32 object-cover rounded-lg border border-gray-300"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {images.length < 4 && (
-                <div>
-                  <label
-                    htmlFor="image-upload"
-                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-2 text-gray-500" />
-                      <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG, GIF up to 10MB each (Select multiple files)
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {images.length} / 4 images selected
-                      </p>
-                    </div>
-                    <input
-                      id="image-upload"
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => {
-                        handleImageSelect(e.target.files);
-                        // Reset input to allow selecting the same file again
-                        e.target.value = "";
-                      }}
-                      disabled={uploading}
-                    />
-                  </label>
-                  {uploading && (
-                    <p className="text-sm text-gray-500 mt-2">Uploading images...</p>
-                  )}
-                </div>
-              )}
-              {images.length >= 4 && (
-                <p className="text-sm text-gray-500">Maximum 4 images reached. Remove an image to add more.</p>
-              )}
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Images (up to 4)
+              </label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={uploadMode === 'upload' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setUploadMode('upload')}
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  Upload
+                </Button>
+                <Button
+                  type="button"
+                  variant={uploadMode === 'url' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setUploadMode('url')}
+                >
+                  <LinkIcon className="h-4 w-4 mr-1" />
+                  URL
+                </Button>
+              </div>
             </div>
+            
+            {uploadMode === 'upload' ? (
+              <div className="space-y-4">
+                {imageUrls.map((url, index) => (
+                  <div key={index}>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Image {index + 1}
+                    </label>
+                    <ImageUpload
+                      value={url || undefined}
+                      onChange={(newUrl) => {
+                        const newUrls = [...imageUrls];
+                        newUrls[index] = newUrl || '';
+                        setImageUrls(newUrls);
+                        const validUrls = newUrls.filter((u) => u && u.trim().length > 0);
+                        setValue("images", validUrls);
+                      }}
+                      folder="hamere-trufat/news"
+                    />
+                  </div>
+                ))}
+                <p className="text-xs text-gray-500">
+                  Upload images directly to Cloudinary. Images are optimized automatically.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500 mb-3">
+                  Enter image URLs (e.g., from Cloudinary, Imgur, or any image hosting service). 
+                  These will appear in the mobile app. Leave empty if not needed.
+                </p>
+                {imageUrls.map((url, index) => (
+                  <div key={index} className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <Input
+                        type="url"
+                        placeholder={`Image ${index + 1} URL (e.g., https://res.cloudinary.com/...)`}
+                        value={url}
+                        onChange={(e) => handleUrlChange(index, e.target.value)}
+                      />
+                    </div>
+                    {url && (
+                      <div className="relative w-24 h-24 flex-shrink-0">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-full object-cover rounded-lg border border-gray-300"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImageUrl(index)}
+                          className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 z-10"
+                          title="Remove image"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <p className="text-xs text-gray-500">
+                  Tip: Use the Upload mode for direct Cloudinary uploads, or paste URLs here.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

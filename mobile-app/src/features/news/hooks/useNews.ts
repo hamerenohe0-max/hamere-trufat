@@ -14,20 +14,26 @@ export const useNewsDetail = (id: string) =>
     enabled: !!id,
   });
 
-export const useNewsComments = (id: string) =>
-  useQuery({
-    queryKey: ['news', id, 'comments'],
-    queryFn: () => newsApi.comments(id),
-    enabled: !!id,
-  });
-
 export const useReactToNews = (id: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (reaction: 'like' | 'dislike') =>
       newsApi.react(id, reaction),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update the cache optimistically
+      queryClient.setQueryData(['news', id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          reactions: {
+            likes: data.likes,
+            dislikes: data.dislikes,
+            userReaction: data.userReaction,
+          },
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['news', id] });
+      queryClient.invalidateQueries({ queryKey: ['news'] });
     },
   });
 };
@@ -36,7 +42,15 @@ export const useBookmarkNews = (id: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => newsApi.bookmark(id),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update the cache optimistically
+      queryClient.setQueryData(['news', id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          bookmarked: data.bookmarked,
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['news', id] });
     },
   });
@@ -47,9 +61,5 @@ export const useTranslateNews = (id: string) =>
     mutationFn: (language: string) => newsApi.translate(id, language),
   });
 
-export const useAddNewsComment = (id: string) =>
-  useMutation({
-    mutationFn: (body: string) => newsApi.addComment(id, body),
-  });
 
 
