@@ -7,18 +7,25 @@ import { getCloudinaryConfig, initializeCloudinary } from '../../../config/cloud
 
 @Injectable()
 export class MediaService {
-  private cloudinaryConfig: { cloudName: string; apiKey: string; apiSecret: string };
+  private cloudinaryConfig: { cloudName: string; apiKey: string; apiSecret: string } | null;
 
   constructor(
     private readonly supabase: SupabaseService,
     private configService: ConfigService,
   ) {
     // Initialize Cloudinary configuration (supports both CLOUDINARY_URL and individual vars)
+    // Cloudinary is optional - service will work without it, but uploads will be disabled
     this.cloudinaryConfig = getCloudinaryConfig(this.configService);
     initializeCloudinary(this.cloudinaryConfig);
   }
 
   async uploadFile(file: any, userId: string): Promise<any> {
+    if (!this.cloudinaryConfig) {
+      throw new InternalServerErrorException(
+        'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your environment variables.'
+      );
+    }
+
     console.log('MediaService: Starting upload to Cloudinary', {
       filename: file.originalname,
       size: file.size,
@@ -80,6 +87,12 @@ export class MediaService {
   }
 
   async deleteFile(id: string, userId: string): Promise<void> {
+    if (!this.cloudinaryConfig) {
+      throw new InternalServerErrorException(
+        'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your environment variables.'
+      );
+    }
+
     const { data: media, error } = await this.supabase.client
       .from('media')
       .select('*')
@@ -150,6 +163,12 @@ export class MediaService {
     // Add public_id if provided
     if (params.publicId) {
       signatureParams.public_id = params.publicId;
+    }
+
+    if (!this.cloudinaryConfig) {
+      throw new InternalServerErrorException(
+        'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your environment variables.'
+      );
     }
 
     // Use the validated configuration from constructor
