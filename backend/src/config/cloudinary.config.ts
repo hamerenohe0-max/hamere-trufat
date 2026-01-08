@@ -17,8 +17,9 @@ export interface CloudinaryConfig {
 /**
  * Get Cloudinary configuration from environment variables
  * Supports both CLOUDINARY_URL and individual variables
+ * Returns null if configuration is missing (Cloudinary is optional)
  */
-export function getCloudinaryConfig(configService: ConfigService): CloudinaryConfig {
+export function getCloudinaryConfig(configService: ConfigService): CloudinaryConfig | null {
   // Try CLOUDINARY_URL first (format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME)
   const cloudinaryUrl = configService.get<string>('CLOUDINARY_URL');
   
@@ -46,11 +47,19 @@ export function getCloudinaryConfig(configService: ConfigService): CloudinaryCon
   const apiKey = configService.get<string>('CLOUDINARY_API_KEY');
   const apiSecret = configService.get<string>('CLOUDINARY_API_SECRET');
   
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error(
-      'Cloudinary configuration missing. ' +
-      'Please set either CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET'
+  // Check if any are placeholder values
+  const hasPlaceholders = 
+    apiKey === 'your-api-key' || 
+    apiSecret === 'your-api-secret' || 
+    cloudName === 'your-cloud-name';
+  
+  if (!cloudName || !apiKey || !apiSecret || hasPlaceholders) {
+    console.warn(
+      'Cloudinary configuration missing or incomplete. ' +
+      'Media uploads will be disabled. ' +
+      'To enable, set either CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET'
     );
+    return null;
   }
   
   return {
@@ -62,8 +71,13 @@ export function getCloudinaryConfig(configService: ConfigService): CloudinaryCon
 
 /**
  * Initialize Cloudinary with configuration
+ * Only initializes if config is provided
  */
-export function initializeCloudinary(config: CloudinaryConfig): void {
+export function initializeCloudinary(config: CloudinaryConfig | null): void {
+  if (!config) {
+    return; // Cloudinary is optional, skip initialization
+  }
+  
   cloudinary.config({
     cloud_name: config.cloudName,
     api_key: config.apiKey,

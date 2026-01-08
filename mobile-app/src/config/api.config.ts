@@ -6,12 +6,13 @@
  */
 
 export const API_CONFIG = {
-  // Use mock data by default for development
-  // Set EXPO_PUBLIC_USE_MOCK_DATA=false to use real APIs
-  useMockData: process.env.EXPO_PUBLIC_USE_MOCK_DATA !== 'false',
+  // Use mock data based on environment variable
+  // Set EXPO_PUBLIC_USE_MOCK_DATA=true to use mock data, false to use real APIs
+  // Defaults to false (use real API) if not set
+  useMockData: process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true',
   
   // API base URL
-  baseUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1',
+  baseUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.17:4000/api/v1',
   
   // Cache settings
   cacheEnabled: true,
