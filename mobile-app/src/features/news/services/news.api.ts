@@ -8,7 +8,8 @@ interface NewsResponse {
 
 export const newsApi = {
   list: async (limit = 20, offset = 0): Promise<NewsItem[]> => {
-    const response = await apiFetch<NewsResponse>(`/news?limit=${limit}&offset=${offset}`);
+    // Only fetch published news for mobile app
+    const response = await apiFetch<NewsResponse>(`/news?status=published&limit=${limit}&offset=${offset}`);
     return response.items.map(mapNewsFromBackend);
   },
 

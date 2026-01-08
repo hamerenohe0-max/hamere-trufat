@@ -120,7 +120,7 @@ export class MediaService {
   async generateUploadSignature(params: {
     folder?: string;
     publicId?: string;
-    resourceType?: 'image' | 'video' | 'raw' | 'auto';
+    resourceType?: 'image' | 'video' | 'raw' | 'auto' | 'audio';
     timestamp?: number;
   }): Promise<{
     signature: string;
@@ -144,7 +144,13 @@ export class MediaService {
 
     // Add resource_type
     if (resourceType && resourceType !== 'auto') {
-      signatureParams.resource_type = resourceType;
+      // Cloudinary treats audio as 'video' resource type usually, but we accept 'audio' in param and map it if needed
+      // or just pass it through if Cloudinary supports it directly in newer APIs.
+      // For safely, if type is 'audio', we might want to use 'video' for Cloudinary signing if that's what it expects.
+      // But 'auto' is safest. 
+      // If the user passes 'audio', we'll treat it as 'video' for the signature if strict,
+      // but let's just pass it for now or change the interface to be clearer.
+      signatureParams.resource_type = resourceType === 'audio' ? 'video' : resourceType;
     }
 
     // Add public_id if provided
@@ -199,7 +205,8 @@ export class MediaService {
       case 'image':
         return 'image';
       case 'video':
-        return 'video';
+        // Cloudinary often treats audio as "video" resource type
+        return 'video'; // Or 'audio' if we can distinguish, but for now generic.
       case 'raw':
         return 'document';
       default:

@@ -53,18 +53,18 @@ async function uploadToCloudinary(
 
   return new Promise((resolve, reject) => {
     const formData = new FormData();
-    
+
     // Add file
     formData.append('file', file);
-    
+
     // Add upload preset (required for unsigned uploads)
     formData.append('upload_preset', uploadPreset);
-    
+
     // Add folder if specified
     if (folder) {
       formData.append('folder', folder);
     }
-    
+
     // Set resource type to auto (Cloudinary will detect)
     formData.append('resource_type', 'auto');
 
@@ -188,3 +188,37 @@ export async function uploadMultipleImages(
   return results;
 }
 
+
+/**
+ * Upload audio file to Cloudinary
+ */
+export async function uploadAudioToCloudinary(
+  options: UploadOptions
+): Promise<UploadResult> {
+  const { file, folder = 'hamere-trufat/audio', onProgress } = options;
+
+  if (!file) {
+    throw new Error('No file provided');
+  }
+
+  // Validate file type (audio only)
+  if (!file.type.startsWith('audio/') && !file.type.includes('mpeg') && !file.type.includes('wav')) {
+    throw new Error('Only audio files are supported');
+  }
+
+  // Validate file size (50MB limit for audio)
+  const maxSize = 50 * 1024 * 1024; // 50MB
+  if (file.size > maxSize) {
+    throw new Error('File size exceeds 50MB limit');
+  }
+
+  try {
+    const result = await uploadToCloudinary(file, folder, onProgress);
+    return result;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Unknown error during upload');
+  }
+}

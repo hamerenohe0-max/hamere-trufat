@@ -10,6 +10,13 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
+  profile?: {
+    bio?: string;
+    avatarUrl?: string;
+    language?: string;
+    region?: string;
+    phone?: string;
+  };
 }
 
 export interface PaginatedResponse<T> {
@@ -20,10 +27,31 @@ export interface PaginatedResponse<T> {
 }
 
 export const usersApi = {
-  list: () => apiFetch<PaginatedResponse<User>>("/admin/users"),
+  list: (filters?: { role?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.role) params.append('role', filters.role);
+    if (filters?.status) params.append('status', filters.status);
+    const query = params.toString();
+    return apiFetch<PaginatedResponse<User>>(`/admin/users${query ? `?${query}` : ''}`);
+  },
   get: (id: string) => apiFetch<User>(`/admin/users/${id}`),
-  update: (id: string, data: Partial<User>) =>
-    apiFetch<User>(`/admin/users/${id}`, { method: "PATCH", body: data }),
+  getPublishers: (filters?: { status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    const query = params.toString();
+    return apiFetch<PaginatedResponse<User>>(`/admin/publishers${query ? `?${query}` : ''}`);
+  },
+  update: (id: string, data: Partial<User> & { 
+    bio?: string; 
+    phone?: string; 
+    region?: string; 
+    language?: string; 
+    avatarUrl?: string; 
+  }) =>
+    apiFetch<User>(`/admin/users/${id}`, { 
+      method: "PATCH", 
+      body: JSON.stringify(data) 
+    }),
   suspend: (id: string) =>
     apiFetch<User>(`/admin/users/${id}/suspend`, { method: "POST" }),
   activate: (id: string) =>

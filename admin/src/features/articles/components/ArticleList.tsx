@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Edit2, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { ArticleForm } from "./ArticleForm";
 import {
   Dialog,
@@ -33,13 +34,35 @@ import {
 import { toast } from "sonner";
 
 export function ArticleList() {
-  const { data, isLoading } = useArticlesList();
+  const { data, isLoading, error, isError } = useArticlesList();
   const deleteMutation = useDeleteArticle();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (isLoading) {
-    return <div>Loading articles...</div>;
+    return <div className="text-center py-8">Loading articles...</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-md border p-8 text-center">
+        <p className="font-semibold text-red-600">Failed to load articles</p>
+        <p className="text-sm text-gray-600 mt-2">
+          {error instanceof Error ? error.message : "Please check your authentication and try again."}
+        </p>
+        <p className="text-xs text-gray-500 mt-4">
+          Make sure you are logged in and have the correct permissions.
+        </p>
+      </div>
+    );
+  }
+
+  if (!data?.items || data.items.length === 0) {
+    return (
+      <div className="rounded-md border p-8 text-center text-gray-500">
+        No articles found. Create your first article!
+      </div>
+    );
   }
 
   const handleDelete = async () => {
@@ -64,18 +87,27 @@ export function ArticleList() {
               <TableHead>Title</TableHead>
               <TableHead>Excerpt</TableHead>
               <TableHead>Author</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Created At</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data?.items.map((article) => (
+            {data?.items.map((article) => {
+              const isPublished = !!article.published_at;
+              const authorName = article.author?.name || article.author_id;
+              return (
               <TableRow key={article.id}>
                 <TableCell className="font-medium">{article.title}</TableCell>
                 <TableCell className="truncate max-w-xs">
                   {article.excerpt}
                 </TableCell>
-                <TableCell>{article.author_id}</TableCell>
+                <TableCell>{authorName}</TableCell>
+                <TableCell>
+                  <Badge variant={isPublished ? "default" : "secondary"}>
+                    {isPublished ? "Published" : "Draft"}
+                  </Badge>
+                </TableCell>
                 <TableCell>
                   {article.created_at
                     ? formatDate(article.created_at)
@@ -99,7 +131,8 @@ export function ArticleList() {
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
+            );
+            })}
             {(!data?.items || data.items.length === 0) && (
               <TableRow>
                 <TableCell colSpan={5} className="text-center h-24">

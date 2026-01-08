@@ -18,11 +18,34 @@ export class ArticlesController {
   }
 
   @Get()
-  findAll(@Query() query: any) {
+  findAll(@Query() query: any, @CurrentUser() user?: any) {
+    // For authenticated admin/publisher, show all articles (including drafts)
+    // For public/unauthenticated, only show published articles
+    const isAuthenticatedAdminOrPublisher = user && (user.role === 'admin' || user.role === 'publisher');
+    
     return this.articlesService.findAll({
       authorId: query.authorId,
       limit: query.limit ? parseInt(query.limit) : undefined,
       offset: query.offset ? parseInt(query.offset) : undefined,
+      publishedOnly: !isAuthenticatedAdminOrPublisher, // Only show published to public
+      userId: user?.id, // For filtering publisher's own articles
+      userRole: user?.role, // For role-based filtering
+    });
+  }
+
+  @Get('my')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('publisher', 'admin')
+  findMyArticles(@CurrentUser() user: any, @Query() query: any) {
+    // Publishers get only their own articles (including drafts)
+    // Admins get all articles
+    return this.articlesService.findAll({
+      authorId: user.role === 'publisher' ? user.id : undefined,
+      limit: query.limit ? parseInt(query.limit) : undefined,
+      offset: query.offset ? parseInt(query.offset) : undefined,
+      publishedOnly: false, // Include drafts for authenticated users
+      userId: user.id,
+      userRole: user.role,
     });
   }
 

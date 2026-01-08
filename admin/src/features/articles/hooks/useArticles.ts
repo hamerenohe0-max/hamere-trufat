@@ -2,11 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { articlesApi, ArticleItem, CreateArticleDto } from "../services/articles.api";
+import { useAuthStore } from "@/store/auth-store";
 
 export function useArticlesList() {
+  const tokens = useAuthStore((state) => state.tokens);
   return useQuery({
     queryKey: ["admin-articles"],
     queryFn: articlesApi.list,
+    enabled: !!tokens?.accessToken, // Only fetch if user is authenticated
+    retry: 1, // Retry once on failure
   });
 }
 

@@ -30,7 +30,7 @@ import {
 
 export function NewsList() {
   const router = useRouter();
-  const { data: news, isLoading } = useNewsList();
+  const { data: news, isLoading, error, isError } = useNewsList();
   const deleteMutation = useDeleteNews();
   const publishMutation = usePublishNews();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -102,6 +102,22 @@ export function NewsList() {
 
   if (isLoading) {
     return <div className="text-center py-8">Loading news...</div>;
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <div className="text-center py-8 text-red-600">
+          <p className="font-semibold">Failed to load news articles</p>
+          <p className="text-sm text-gray-600 mt-2">
+            {error instanceof Error ? error.message : "Please check your authentication and try again."}
+          </p>
+          <p className="text-xs text-gray-500 mt-4">
+            Make sure you are logged in and have the correct permissions.
+          </p>
+        </div>
+      </Card>
+    );
   }
 
   return (

@@ -13,6 +13,14 @@ export interface ArticleItem {
   created_at: string;
   updated_at: string;
   views: number;
+  author?: {
+    id: string;
+    name: string;
+    profile?: {
+      avatarUrl?: string;
+      bio?: string;
+    };
+  };
 }
 
 export interface CreateArticleDto {
@@ -20,11 +28,13 @@ export interface CreateArticleDto {
   excerpt: string;
   content: string;
   coverImage?: string;
-  keywords?: string[]; // Renamed from tags to match backend DTO
+  images?: string[];
+  keywords?: string[];
+  status?: 'draft' | 'published';
 }
 
 export const articlesApi = {
-  list: () => apiFetch<{ items: ArticleItem[] }>("/articles"),
+  list: () => apiFetch<{ items: ArticleItem[] }>("/articles/my"),
   
   get: (id: string) => apiFetch<ArticleItem>(`/articles/${id}`),
   

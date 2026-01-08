@@ -45,5 +45,9 @@ export class CreateArticleDto {
   @IsString()
   @IsOptional()
   readingTime?: string;
+
+  @IsString()
+  @IsOptional()
+  status?: 'draft' | 'published';
 }
 

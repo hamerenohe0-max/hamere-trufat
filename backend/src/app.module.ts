@@ -22,6 +22,7 @@ import { SyncModule } from './modules/sync/sync.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { MediaModule } from './modules/media/media.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { DailyReadingsModule } from './modules/daily-readings/daily-readings.module';
 import { SupabaseModule } from './common/supabase/supabase.module';
 
 @Module({
@@ -51,6 +52,7 @@ import { SupabaseModule } from './common/supabase/supabase.module';
     RolesModule,
     MediaModule,
     AdminModule,
+    DailyReadingsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -61,4 +63,4 @@ import { SupabaseModule } from './common/supabase/supabase.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

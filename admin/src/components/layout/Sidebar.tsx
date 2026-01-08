@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
 import {
   LayoutDashboard,
   Newspaper,
@@ -15,10 +16,12 @@ import {
   Bell,
   CheckCircle,
   Settings,
+  BookOpen,
 } from "lucide-react";
 
-const navigation = [
+const adminNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Daily Readings", href: "/daily-readings", icon: BookOpen },
   { name: "News", href: "/news", icon: Newspaper },
   { name: "Articles", href: "/articles", icon: FileText },
   { name: "Progress Reports", href: "/progress", icon: TrendingUp },
@@ -32,8 +35,16 @@ const navigation = [
   { name: "Profile Settings", href: "/profile", icon: Settings },
 ];
 
+const publisherNavigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "My Articles", href: "/articles", icon: FileText },
+  { name: "Profile Settings", href: "/profile", icon: Settings },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
+  const user = useAuthStore((state) => state.user);
+  const navigation = user?.role === 'admin' ? adminNavigation : publisherNavigation;
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-white">

@@ -5,14 +5,21 @@ import slugify from 'slugify';
 
 @Injectable()
 export class ArticlesService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(private readonly supabase: SupabaseService) { }
 
   async create(createArticleDto: CreateArticleDto, authorId: string): Promise<any> {
     const slug = slugify(createArticleDto.title, { lower: true, strict: true });
-    
+
     // Use images array if provided, otherwise fall back to coverImage for backward compatibility
     const images = createArticleDto.images || (createArticleDto.coverImage ? [createArticleDto.coverImage] : []);
-    
+
+    // Determine published_at based on status
+    // If status is 'published', set published_at to now
+    // If status is 'draft' or not provided, leave published_at as null
+    const publishedAt = createArticleDto.status === 'published'
+      ? new Date().toISOString()
+      : null;
+
     const { data, error } = await this.supabase.client
       .from('articles')
       .insert({
@@ -23,7 +30,7 @@ export class ArticlesService {
         images: images,
         cover_image: createArticleDto.coverImage || (images.length > 0 ? images[0] : null), // Keep for backward compatibility
         author_id: authorId,
-        published_at: new Date().toISOString(),
+        published_at: publishedAt,
         related_event_ids: createArticleDto.relatedEventIds || [],
         related_feast_ids: createArticleDto.relatedFeastIds || [],
         keywords: createArticleDto.keywords || [],
@@ -40,17 +47,40 @@ export class ArticlesService {
     return data;
   }
 
-  async findAll(filters?: { authorId?: string; limit?: number; offset?: number }) {
+  async findAll(filters?: {
+    authorId?: string;
+    limit?: number;
+    offset?: number;
+    publishedOnly?: boolean;
+    userId?: string;
+    userRole?: string;
+  }) {
     let query = this.supabase.client
       .from('articles')
-      .select('*, author:users(id, name, profile, role)', { count: 'exact' });
+      .select('*, author:users(id, name, profile, role, publishers(*))', { count: 'exact' });
 
-    if (filters?.authorId) query = query.eq('author_id', filters.authorId);
+    // For public endpoints, only show published articles
+    if (filters?.publishedOnly === true) {
+      query = query.not('published_at', 'is', null);
+    }
+
+    // For publishers, show only their own articles (including drafts)
+    // This applies when publishedOnly is false (authenticated request)
+    if (filters?.publishedOnly === false && filters?.userRole === 'publisher' && filters?.userId) {
+      query = query.eq('author_id', filters.userId);
+    }
+    // Admins can see all articles when publishedOnly is false (no additional filter)
+
+    // Additional author filter (for author profile pages, etc.)
+    if (filters?.authorId) {
+      query = query.eq('author_id', filters.authorId);
+    }
 
     const limit = filters?.limit || 20;
     const offset = filters?.offset || 0;
 
-    query = query.order('published_at', { ascending: false }).range(offset, offset + limit - 1);
+    // Order by created_at for drafts, published_at for published articles
+    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
     const { data, count } = await query;
 
@@ -60,7 +90,7 @@ export class ArticlesService {
   async findOne(id: string, userId?: string): Promise<any> {
     const { data: article, error } = await this.supabase.client
       .from('articles')
-      .select('*, author:users(id, name, profile, role)')
+      .select('*, author:users(id, name, profile, role, publishers(*))')
       .eq('id', id)
       .single();
 
@@ -112,7 +142,7 @@ export class ArticlesService {
   async findBySlug(slug: string): Promise<any> {
     const { data: article, error } = await this.supabase.client
       .from('articles')
-      .select('*, author:users(id, name, profile, role)')
+      .select('*, author:users(id, name, profile, role, publishers(*))')
       .eq('slug', slug)
       .single();
 
@@ -138,9 +168,21 @@ export class ArticlesService {
     }
 
     const updates: any = { ...updateDto };
-    
+
     if (updateDto.title && updateDto.title !== article.title) {
       updates.slug = slugify(updateDto.title, { lower: true, strict: true });
+    }
+
+    // Handle status changes
+    if (updateDto.status !== undefined) {
+      if (updateDto.status === 'published' && !article.published_at) {
+        // Publishing for the first time
+        updates.published_at = new Date().toISOString();
+      } else if (updateDto.status === 'draft') {
+        // Unpublishing (setting to draft)
+        updates.published_at = null;
+      }
+      // If already published and status is 'published', keep published_at as is
     }
 
     // Handle images array
@@ -157,18 +199,19 @@ export class ArticlesService {
       // Don't set images array here to avoid migration requirement
       updates.cover_image = updateDto.coverImage;
     }
-    
+
     // Map camelCase to snake_case
     if (updateDto.relatedEventIds) updates.related_event_ids = updateDto.relatedEventIds;
     if (updateDto.relatedFeastIds) updates.related_feast_ids = updateDto.relatedFeastIds;
     if (updateDto.audioUrl) updates.audio_url = updateDto.audioUrl;
     if (updateDto.readingTime) updates.reading_time = updateDto.readingTime;
-    
+
     delete updates.coverImage;
     delete updates.relatedEventIds;
     delete updates.relatedFeastIds;
     delete updates.audioUrl;
     delete updates.readingTime;
+    delete updates.status; // Remove status as it's not a DB column, we use published_at
 
     const { data, error } = await this.supabase.client
       .from('articles')
@@ -194,7 +237,7 @@ export class ArticlesService {
 
   async toggleReaction(articleId: string, userId: string, reaction: 'like' | 'dislike'): Promise<any> {
     const article = await this.findOne(articleId);
-    
+
     const { data: existing } = await (this.supabase.client
       .from('article_reactions' as any)
       .select('*')
@@ -245,7 +288,7 @@ export class ArticlesService {
 
   async toggleBookmark(articleId: string, userId: string): Promise<{ bookmarked: boolean }> {
     await this.findOne(articleId);
-    
+
     const { data: existing } = await this.supabase.client
       .from('article_bookmarks')
       .select('*')
@@ -286,11 +329,11 @@ export class ArticlesService {
   async findByAuthor(authorId: string, limit = 20, offset = 0) {
     const { data, count } = await this.supabase.client
       .from('articles')
-      .select('*, author:users!articles_author_id_fkey(id, name, profile, role)', { count: 'exact' })
+      .select('*, author:users!articles_author_id_fkey(id, name, profile, role, publishers(*))', { count: 'exact' })
       .eq('author_id', authorId)
       .order('published_at', { ascending: false })
       .range(offset, offset + limit - 1);
-      
+
     return { items: (data || []) as any[], total: count || 0, limit, offset };
   }
 }

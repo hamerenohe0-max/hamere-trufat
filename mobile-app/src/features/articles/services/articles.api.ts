@@ -22,7 +22,7 @@ export const articlesApi = {
     // Based on previous files, backend seems to be NestJS + naming convention.
     // Let's assume for this step we might need manual mapping or the backend was updated to return camelCase.
     // Given the admin interface `ArticleItem` had `created_at`, we probably need to map.
-    
+
     return response.items.map(mapArticleFromBackend);
   },
 
@@ -36,8 +36,8 @@ export const articlesApi = {
     return {
       id: data.id,
       name: data.name,
-      avatarUrl: data.avatarUrl,
-      bio: data.bio,
+      avatarUrl: data.profile?.avatarUrl,
+      bio: data.profile?.bio,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       title: data.role, // Mapping role to title
@@ -69,10 +69,20 @@ export const articlesApi = {
 };
 
 // Helper to map backend fields to frontend model
+// Helper to map backend fields to frontend model
 function mapArticleFromBackend(data: any): SpiritualArticle {
   // Get images array or fallback to cover_image
   const images = data.images || (data.cover_image ? [data.cover_image] : []);
-  
+
+  // Extract author profile data, handling both regular profile and joined publishers table
+  let authorProfile = data.author?.profile || {};
+  if (data.author?.role === 'publisher' && data.author?.publishers) {
+    const pubData = Array.isArray(data.author.publishers) ? data.author.publishers[0] : data.author.publishers;
+    if (pubData) {
+      authorProfile = { ...authorProfile, avatarUrl: pubData.avatar_url, bio: pubData.bio };
+    }
+  }
+
   return {
     id: data.id,
     title: data.title,
@@ -93,13 +103,13 @@ function mapArticleFromBackend(data: any): SpiritualArticle {
     bookmarked: data.bookmarked || false,
     reactions: data.reactions || { likes: data.likes || 0, dislikes: data.dislikes || 0, userReaction: null },
     author: data.author ? {
-        id: data.author.id,
-        name: data.author.name,
-        avatarUrl: data.author.profile?.avatarUrl,
-        bio: data.author.profile?.bio,
-        title: data.author.role,
-        createdAt: data.author.created_at || data.created_at,
-        updatedAt: data.author.updated_at || data.updated_at,
+      id: data.author.id,
+      name: data.author.name,
+      avatarUrl: authorProfile.avatarUrl,
+      bio: authorProfile.bio,
+      title: data.author.role,
+      createdAt: data.author.created_at || data.created_at,
+      updatedAt: data.author.updated_at || data.updated_at,
     } : undefined
   } as SpiritualArticle;
 }

@@ -1,10 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { newsApi, NewsItem } from "../services/news.api";
+import { useAuthStore } from "@/store/auth-store";
 
 export function useNewsList() {
+  const tokens = useAuthStore((state) => state.tokens);
   return useQuery({
     queryKey: ["admin-news"],
     queryFn: newsApi.list,
+    enabled: !!tokens?.accessToken, // Only fetch if user is authenticated
+    retry: 1, // Retry once on failure
   });
 }
 

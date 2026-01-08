@@ -30,8 +30,10 @@ export class NewsController {
 
   @Get()
   findAll(@Query() query: any) {
+    // For public endpoints, default to published status if not specified
+    const status = query.status || 'published';
     return this.newsService.findAll({
-      status: query.status,
+      status: status,
       authorId: query.authorId,
       limit: query.limit ? parseInt(query.limit) : undefined,
       offset: query.offset ? parseInt(query.offset) : undefined,

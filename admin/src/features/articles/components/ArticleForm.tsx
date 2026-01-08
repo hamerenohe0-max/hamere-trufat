@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import { useCreateArticle, useUpdateArticle, useArticle } from "../hooks/useArticles";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ const articleSchema = z.object({
   content: z.string().min(1, "Content is required"),
   images: z.array(z.string()).max(4, "Maximum 4 images allowed").optional(),
   tags: z.string().optional(),
+  status: z.enum(['draft', 'published']).optional(),
 });
 
 type ArticleFormData = z.infer<typeof articleSchema>;
@@ -57,6 +59,9 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
       const articleImages = existingArticle.images || (existingArticle.cover_image ? [existingArticle.cover_image] : []);
       setImages(articleImages);
       setValue("images", articleImages);
+      // Set status based on published_at
+      const status = existingArticle.published_at ? 'published' : 'draft';
+      setValue("status", status);
     }
   }, [existingArticle, setValue]);
 
@@ -132,6 +137,7 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
   const onSubmit = async (data: ArticleFormData) => {
     try {
       const keywords = data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
+      const status = data.status || 'draft';
 
       if (articleId) {
         // Update article - images are already uploaded URLs
@@ -143,6 +149,7 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
             content: data.content,
             images: images, // Already Cloudinary URLs
             keywords,
+            status: status as 'draft' | 'published',
           },
         });
         toast.success("Article updated successfully");
@@ -154,6 +161,7 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
           content: data.content,
           images: images, // Already Cloudinary URLs
           keywords,
+          status: status as 'draft' | 'published',
         });
         toast.success("Article created successfully");
       }
@@ -282,6 +290,20 @@ export function ArticleForm({ articleId, onSuccess }: ArticleFormProps) {
       <div className="space-y-2">
         <label className="text-sm font-medium">Keywords (comma separated)</label>
         <Input {...register("tags")} placeholder="faith, history, prayer" />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Status *</label>
+        <Select {...register("status")} defaultValue="draft">
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+        </Select>
+        <p className="text-xs text-gray-500">
+          Draft articles are only visible to you. Published articles are visible to all users.
+        </p>
+        {errors.status && (
+          <p className="text-red-500 text-sm">{errors.status.message}</p>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-4">

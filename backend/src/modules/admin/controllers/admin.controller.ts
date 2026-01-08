@@ -42,7 +42,7 @@ export class AdminController {
     private notificationsService: NotificationsService,
     private mediaService: MediaService,
     private rolesService: RolesService,
-  ) {}
+  ) { }
 
   @Get('dashboard/stats')
   getStats() {
@@ -93,7 +93,7 @@ export class AdminController {
     }
 
     let imageUrls: string[] = [];
-    
+
     // Check if images are provided as URLs (from admin panel) or files
     if (createNewsDto.images && Array.isArray(createNewsDto.images)) {
       // Images provided as URLs directly (simpler flow)
@@ -118,7 +118,7 @@ export class AdminController {
     // Convert Google Drive links to direct image URLs
     const convertGoogleDriveLink = (url: string): string => {
       if (!url || typeof url !== 'string') return url;
-      
+
       // Match Google Drive sharing link format: https://drive.google.com/file/d/FILE_ID/view
       // Also handles: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
       const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -130,7 +130,7 @@ export class AdminController {
         console.log(`Converting Google Drive link: ${url} -> ${convertedUrl}`);
         return convertedUrl;
       }
-      
+
       // Also handle shortened Google Drive links
       const shortMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
       if (shortMatch) {
@@ -139,7 +139,7 @@ export class AdminController {
         console.log(`Converting Google Drive link: ${url} -> ${convertedUrl}`);
         return convertedUrl;
       }
-      
+
       // Handle direct file ID in URL
       const directIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
       if (directIdMatch && url.includes('drive.google.com')) {
@@ -148,10 +148,10 @@ export class AdminController {
         console.log(`Converting Google Drive link: ${url} -> ${convertedUrl}`);
         return convertedUrl;
       }
-      
+
       return url; // Return as-is if not a Google Drive link
     };
-    
+
     // Filter out any empty or invalid URLs, converting Google Drive links
     const cleanImageUrls = imageUrls
       .map((url) => convertGoogleDriveLink(url))
@@ -165,7 +165,7 @@ export class AdminController {
           return false;
         }
       });
-    
+
     console.log('Admin: Final image URLs to save:', cleanImageUrls);
 
     // Pass the image URLs (links) to the service - these will be stored in the database
@@ -177,11 +177,11 @@ export class AdminController {
       images: cleanImageUrls, // Array of image URLs (links)
       status: createNewsDto.status || 'draft',
     };
-    
+
     console.log('Admin: Creating news with image URLs:', newsData.images);
     const result = await this.newsService.create(newsData, user.id);
     console.log('Admin: News created, returned images:', result?.images);
-    
+
     return result;
   }
 
@@ -204,7 +204,7 @@ export class AdminController {
     }
 
     let imageUrls: string[] = [];
-    
+
     // Check if images are provided as URLs (from admin panel) or files
     if (updateNewsDto.images && Array.isArray(updateNewsDto.images)) {
       // Images provided as URLs directly (simpler flow)
@@ -222,22 +222,22 @@ export class AdminController {
           console.error('Failed to upload image:', error);
         }
       }
-      
+
       // Parse existing images if provided (as JSON string from FormData)
       let existingImages: string[] = [];
       if (updateNewsDto.existingImages) {
         try {
-          const parsed = typeof updateNewsDto.existingImages === 'string' 
+          const parsed = typeof updateNewsDto.existingImages === 'string'
             ? JSON.parse(updateNewsDto.existingImages)
             : Array.isArray(updateNewsDto.existingImages)
-            ? updateNewsDto.existingImages
-            : [];
+              ? updateNewsDto.existingImages
+              : [];
           existingImages = parsed.filter((url: any) => url && typeof url === 'string' && url.trim().length > 0);
         } catch {
           existingImages = [];
         }
       }
-      
+
       // Combine existing images with newly uploaded ones
       imageUrls = [...existingImages, ...imageUrls];
     }
@@ -245,7 +245,7 @@ export class AdminController {
     // Convert Google Drive links to direct image URLs and validate
     const convertGoogleDriveLink = (url: string): string => {
       if (!url || typeof url !== 'string') return url;
-      
+
       // Match Google Drive sharing link format: https://drive.google.com/file/d/FILE_ID/view
       // Also handles: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
       const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -253,24 +253,24 @@ export class AdminController {
         const fileId = driveMatch[1];
         return `https://drive.google.com/uc?export=view&id=${fileId}`;
       }
-      
+
       // Also handle shortened Google Drive links
       const shortMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
       if (shortMatch) {
         const fileId = shortMatch[1];
         return `https://drive.google.com/uc?export=view&id=${fileId}`;
       }
-      
+
       // Handle direct file ID in URL
       const directIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
       if (directIdMatch && url.includes('drive.google.com')) {
         const fileId = directIdMatch[1];
         return `https://drive.google.com/uc?export=view&id=${fileId}`;
       }
-      
+
       return url; // Return as-is if not a Google Drive link
     };
-    
+
     // Filter and validate URLs, converting Google Drive links
     const allImages = imageUrls
       .map((url) => convertGoogleDriveLink(url))
@@ -283,7 +283,7 @@ export class AdminController {
           return false;
         }
       });
-    
+
     console.log('Admin: Updating news with images:', allImages);
 
     // Build update object
@@ -293,7 +293,7 @@ export class AdminController {
     if (updateNewsDto.body !== undefined) updateData.body = updateNewsDto.body;
     if (tags !== undefined) updateData.tags = tags;
     if (updateNewsDto.status !== undefined) updateData.status = updateNewsDto.status;
-    
+
     // If new images were uploaded or existing images provided, use combined list
     // Otherwise use DTO images or keep existing
     if (allImages.length > 0) {
@@ -410,11 +410,11 @@ export class AdminController {
     let existingImages: string[] = [];
     if (updateArticleDto.existingImages) {
       try {
-        existingImages = typeof updateArticleDto.existingImages === 'string' 
+        existingImages = typeof updateArticleDto.existingImages === 'string'
           ? JSON.parse(updateArticleDto.existingImages)
           : Array.isArray(updateArticleDto.existingImages)
-          ? updateArticleDto.existingImages
-          : [];
+            ? updateArticleDto.existingImages
+            : [];
       } catch {
         existingImages = [];
       }
@@ -433,7 +433,7 @@ export class AdminController {
     if (updateArticleDto.relatedFeastIds !== undefined) updateData.relatedFeastIds = updateArticleDto.relatedFeastIds;
     if (updateArticleDto.audioUrl !== undefined) updateData.audioUrl = updateArticleDto.audioUrl;
     if (updateArticleDto.readingTime !== undefined) updateData.readingTime = updateArticleDto.readingTime;
-    
+
     // If new images were uploaded or existing images provided, use combined list
     if (allImages.length > 0) {
       updateData.images = allImages;
@@ -535,12 +535,42 @@ export class AdminController {
     });
   }
 
+  // Publishers endpoints - specific routes must come before general ones
+  @Get('publishers/requests')
+  @Roles('admin')
+  getPublisherRequests(@Query() query: any) {
+    return this.rolesService.findAll({
+      status: query.status,
+      limit: query.limit ? parseInt(query.limit) : undefined,
+      offset: query.offset ? parseInt(query.offset) : undefined,
+    });
+  }
+
+  @Get('publishers')
+  @Roles('admin')
+  getPublishers(@Query() query: any) {
+    return this.usersService.findAll({
+      role: 'publisher',
+      status: query.status,
+      limit: query.limit ? parseInt(query.limit) : undefined,
+      offset: query.offset ? parseInt(query.offset) : undefined,
+    });
+  }
+
+  @Get('users/:id')
+  @Roles('admin')
+  getUser(@Param('id') id: string) {
+    return this.usersService.getFullProfile(id);
+  }
+
   @Patch('users/:id')
   @Roles('admin')
-  updateUser(@Param('id') id: string, @Body() updateUserDto: any) {
+  async updateUser(@Param('id') id: string, @Body() updateUserDto: any) {
+    console.log(`Admin update user ${id} payload:`, JSON.stringify(updateUserDto));
     if (updateUserDto.status) {
-      return this.usersService.updateStatus(id, updateUserDto.status);
+      await this.usersService.updateStatus(id, updateUserDto.status);
     }
+    // Admin can update any user's profile
     return this.usersService.updateProfile(id, updateUserDto);
   }
 
@@ -583,17 +613,6 @@ export class AdminController {
       query.limit ? parseInt(query.limit) : 50,
       query.offset ? parseInt(query.offset) : 0,
     );
-  }
-
-  // Publishers admin endpoints
-  @Get('publishers/requests')
-  @Roles('admin')
-  getPublisherRequests(@Query() query: any) {
-    return this.rolesService.findAll({
-      status: query.status,
-      limit: query.limit ? parseInt(query.limit) : undefined,
-      offset: query.offset ? parseInt(query.offset) : undefined,
-    });
   }
 
   @Post('publishers/:id/approve')
