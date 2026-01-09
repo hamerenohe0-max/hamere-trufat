@@ -39,13 +39,8 @@ export default function RootLayout() {
           <OfflineBanner />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)/login" />
-            <Stack.Screen name="(auth)/register" />
-            <Stack.Screen name="(auth)/otp" />
-            <Stack.Screen name="(auth)/forgot-password" />
-            <Stack.Screen name="(protected)/home" />
-            <Stack.Screen name="(protected)/profile" />
-            <Stack.Screen name="(protected)/sync" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(protected)" />
           </Stack>
         </QueryClientProvider>
       </SafeAreaProvider>
