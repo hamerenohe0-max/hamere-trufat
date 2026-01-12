@@ -6,9 +6,9 @@ type GameScoreInsert = Database['public']['Tables']['game_scores']['Insert'];
 
 @Injectable()
 export class GamesService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(private readonly supabase: SupabaseService) { }
 
-  async saveScore(userId: string, game: 'trivia' | 'puzzle' | 'saint' | 'memory', score: number, metadata?: Record<string, unknown>): Promise<any> {
+  async saveScore(userId: string, game: 'trivia' | 'puzzle' | 'saint' | 'memory' | 'who-said-it' | 'charades' | 'scramble' | 'parable' | 'bingo' | 'journey' | 'virtue' | 'history' | 'matchup', score: number, metadata?: Record<string, unknown>): Promise<any> {
     const { data, error } = await this.supabase.client
       .from('game_scores')
       .insert({

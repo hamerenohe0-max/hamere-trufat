@@ -19,7 +19,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 
 @Controller('news')
 export class NewsController {
-  constructor(private readonly newsService: NewsService) {}
+  constructor(private readonly newsService: NewsService) { }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -42,7 +42,7 @@ export class NewsController {
 
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user?: any) {
-    return this.newsService.findOne(id);
+    return this.newsService.findOne(id, user?.id);
   }
 
   @Patch(':id')

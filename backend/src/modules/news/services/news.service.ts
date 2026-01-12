@@ -5,12 +5,12 @@ import { UpdateNewsDto } from '../dto/update-news.dto';
 
 @Injectable()
 export class NewsService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(private readonly supabase: SupabaseService) { }
 
   async create(createNewsDto: CreateNewsDto, authorId: string): Promise<any> {
     // Use images array if provided, otherwise fall back to coverImage for backward compatibility
     const images = createNewsDto.images || (createNewsDto.coverImage ? [createNewsDto.coverImage] : []);
-    
+
     const { data, error } = await this.supabase.client
       .from('news')
       .insert({
@@ -50,7 +50,7 @@ export class NewsService {
     return { items: (data || []) as any[], total: count || 0, limit, offset };
   }
 
-  async findOne(id: string): Promise<any> {
+  async findOne(id: string, userId?: string): Promise<any> {
     const { data: news, error } = await this.supabase.client
       .from('news')
       .select('*')
@@ -61,13 +61,31 @@ export class NewsService {
       throw new NotFoundException(`News with ID ${id} not found`);
     }
 
+    // Get user's reaction if userId is provided
+    let userReaction: string | null = null;
+    if (userId) {
+      const { data: reaction } = await this.supabase.client
+        .from('news_reactions')
+        .select('reaction')
+        .eq('news_id', id)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (reaction) {
+        userReaction = (reaction as any).reaction;
+      }
+    }
+
     // Increment views directly (fire and forget)
     this.supabase.client
       .from('news')
       .update({ views: ((news as any).views || 0) + 1 } as any)
       .eq('id', id);
 
-    return news;
+    return {
+      ...news,
+      userReaction,
+    };
   }
 
   async update(id: string, updateNewsDto: UpdateNewsDto, userId: string, userRole?: string): Promise<any> {
@@ -78,7 +96,7 @@ export class NewsService {
     }
 
     const updates: any = {};
-    
+
     // Copy all fields except special ones
     if (updateNewsDto.title !== undefined) updates.title = updateNewsDto.title;
     if (updateNewsDto.summary !== undefined) updates.summary = updateNewsDto.summary;
@@ -86,11 +104,11 @@ export class NewsService {
     if (updateNewsDto.tags !== undefined) updates.tags = updateNewsDto.tags;
     if (updateNewsDto.status !== undefined) updates.status = updateNewsDto.status;
     if (updateNewsDto.scheduledAt !== undefined) updates.scheduled_at = updateNewsDto.scheduledAt;
-    
+
     if (updateNewsDto.status === 'published' && news.status !== 'published') {
       updates.published_at = new Date().toISOString();
     }
-    
+
     // Handle images array - use images if provided, otherwise fall back to coverImage
     if (updateNewsDto.images !== undefined) {
       updates.images = updateNewsDto.images;
@@ -118,7 +136,7 @@ export class NewsService {
     if (news.author_id !== userId && userRole !== 'admin') {
       throw new ForbiddenException('You can only delete your own news');
     }
-    
+
     await this.supabase.client.from('news').delete().eq('id', id);
   }
 
@@ -127,7 +145,7 @@ export class NewsService {
     if (news.author_id !== userId) {
       throw new ForbiddenException('You can only publish your own news');
     }
-    
+
     const { data } = await this.supabase.client
       .from('news')
       .update({
@@ -137,40 +155,34 @@ export class NewsService {
       .eq('id', id)
       .select()
       .single();
-      
+
     return data;
   }
 
 
   async toggleReaction(newsId: string, userId: string, reaction: 'like' | 'dislike'): Promise<any> {
-    const news = await this.findOne(newsId);
-    
+    await this.findOne(newsId);
+
+    // 1. Get existing reaction
     const { data: existing } = await this.supabase.client
       .from('news_reactions')
       .select('*')
       .eq('news_id', newsId)
       .eq('user_id', userId)
-      .single() as any;
+      .maybeSingle();
 
-    let likes = news.likes || 0;
-    let dislikes = news.dislikes || 0;
+    let userReaction: 'like' | 'dislike' | null = null;
 
+    // 2. Insert, Update or Delete reaction
     if (existing) {
-      if (existing.reaction === reaction) {
-        // Remove reaction
-        await this.supabase.client.from('news_reactions').delete().eq('id', existing.id);
-        if (reaction === 'like') likes = Math.max(0, likes - 1);
-        else dislikes = Math.max(0, dislikes - 1);
+      if ((existing as any).reaction === reaction) {
+        // Remove reaction if same
+        await this.supabase.client.from('news_reactions').delete().eq('id', (existing as any).id);
+        userReaction = null;
       } else {
-        // Change reaction
-        await this.supabase.client.from('news_reactions').update({ reaction } as any).eq('id', existing.id);
-        if (reaction === 'like') {
-          likes += 1;
-          dislikes = Math.max(0, dislikes - 1);
-        } else {
-          dislikes += 1;
-          likes = Math.max(0, likes - 1);
-        }
+        // Switch reaction if different
+        await this.supabase.client.from('news_reactions').update({ reaction } as any).eq('id', (existing as any).id);
+        userReaction = reaction;
       }
     } else {
       // Add new reaction
@@ -179,24 +191,40 @@ export class NewsService {
         user_id: userId,
         reaction,
       } as any);
-      if (reaction === 'like') likes += 1;
-      else dislikes += 1;
+      userReaction = reaction;
     }
 
-    const { data: updated } = await this.supabase.client
+    // 3. Get accurate counts from the reactions table using filtered select
+    const { data: reactionCounts, error: countError } = await this.supabase.client
+      .from('news_reactions')
+      .select('reaction')
+      .eq('news_id', newsId);
+
+    if (countError) {
+      console.error('Error fetching reaction counts:', countError);
+    }
+
+    const likes = reactionCounts?.filter(r => r.reaction === 'like').length || 0;
+    const dislikes = reactionCounts?.filter(r => r.reaction === 'dislike').length || 0;
+
+    // 4. Sync the counts back to the news table for denormalized access
+    await this.supabase.client
       .from('news')
       .update({ likes, dislikes } as any)
-      .eq('id', newsId)
-      .select()
-      .single();
+      .eq('id', newsId);
 
-    return updated;
+    // 5. Return structured result for optimistic UI updates
+    return {
+      likes,
+      dislikes,
+      userReaction
+    };
   }
 
 
   async toggleBookmark(newsId: string, userId: string): Promise<{ bookmarked: boolean }> {
     await this.findOne(newsId);
-    
+
     const { data: existing } = await this.supabase.client
       .from('news_bookmarks')
       .select('*')
