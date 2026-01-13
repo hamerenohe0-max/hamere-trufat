@@ -8,29 +8,32 @@ import {
   View,
   Linking,
   Image,
+  Share,
 } from 'react-native';
 import { useEventDetail, useEventReminder } from '../../../src/features/events/hooks/useEvents';
 import * as Calendar from 'expo-calendar';
-import * as Sharing from 'expo-sharing';
 import { formatEventDate } from '../../../src/utils/dateFormat';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
 export default function EventDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const eventQuery = useEventDetail(params.id);
   const reminderMutation = useEventReminder(params.id);
+  const { colors, fontScale, isDark } = useTheme();
 
   if (eventQuery.isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={[styles.center, { backgroundColor: colors.background.primary }]}>
+        <ActivityIndicator size="large" color={colors.primary.main} />
       </View>
     );
   }
 
   if (!eventQuery.data) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.empty}>Event not found.</Text>
+      <View style={[styles.center, { backgroundColor: colors.background.primary }]}>
+        <ThemedText style={styles.empty}>Event not found.</ThemedText>
       </View>
     );
   }
@@ -79,7 +82,8 @@ export default function EventDetailScreen() {
       return;
     }
 
-    const url = `https://maps.google.com/?q=${event.coordinates.lat},${event.coordinates.lng}`;
+    const coords = event.coordinates as any;
+    const url = `https://maps.google.com/?q=${coords.lat},${coords.lng}`;
     const supported = await Linking.canOpenURL(url);
     if (supported) {
       await Linking.openURL(url);
@@ -88,14 +92,8 @@ export default function EventDetailScreen() {
 
   async function handleShare() {
     try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        alert('Sharing is not available on this device.');
-        return;
-      }
-
       const message = `${event.name}\n\n${new Date(event.startDate).toLocaleString()}\n${event.location}\n\n${event.description || ''}`;
-      await Sharing.shareAsync({
+      await Share.share({
         message,
       });
     } catch (error) {
@@ -104,43 +102,43 @@ export default function EventDetailScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>{event.name}</Text>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <ThemedText style={styles.heading}>{event.name}</ThemedText>
 
-      <View style={styles.infoCard}>
+      <View style={[styles.infoCard, { backgroundColor: colors.background.secondary }]}>
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📅 Date & Time</Text>
-          <Text style={styles.infoValue}>
+          <ThemedText style={[styles.infoLabel, { color: colors.text.tertiary }]}>📅 Date & Time</ThemedText>
+          <ThemedText style={styles.infoValue}>
             {formatEventDate(event.startDate)}
-          </Text>
+          </ThemedText>
           {event.endDate && (
-            <Text style={styles.infoValue}>
+            <ThemedText style={styles.infoValue}>
               Until: {new Date(event.endDate).toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
               })}
-            </Text>
+            </ThemedText>
           )}
         </View>
 
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📍 Location</Text>
+          <ThemedText style={[styles.infoLabel, { color: colors.text.tertiary }]}>📍 Location</ThemedText>
           <TouchableOpacity onPress={handleOpenMap}>
-            <Text style={[styles.infoValue, styles.link]}>{event.location}</Text>
+            <ThemedText style={[styles.infoValue, styles.link, { color: colors.primary.main }]}>{event.location}</ThemedText>
           </TouchableOpacity>
         </View>
 
         {event.description && (
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Description</Text>
-            <Text style={styles.infoValue}>{event.description}</Text>
+            <ThemedText style={[styles.infoLabel, { color: colors.text.tertiary }]}>Description</ThemedText>
+            <ThemedText style={styles.infoValue}>{event.description}</ThemedText>
           </View>
         )}
       </View>
 
       {event.flyerImages && event.flyerImages.length > 0 && (
         <View style={styles.flyerSection}>
-          <Text style={styles.sectionTitle}>Event Flyers</Text>
+          <ThemedText style={styles.sectionTitle}>Event Flyers</ThemedText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {event.flyerImages.map((image, index) => (
               <Image
@@ -156,25 +154,25 @@ export default function EventDetailScreen() {
 
       <View style={styles.actions}>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, { backgroundColor: colors.primary.main }]}
           onPress={handleAddToCalendar}
         >
-          <Text style={styles.actionText}>📅 Add to Calendar</Text>
+          <ThemedText style={styles.actionText}>📅 Add to Calendar</ThemedText>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.actionButtonOutline}
+          style={[styles.actionButtonOutline, { borderColor: colors.primary.main }]}
           onPress={() =>
             reminderMutation.mutate(!event.reminderEnabled)
           }
         >
-          <Text style={styles.actionOutlineText}>
+          <ThemedText style={[styles.actionOutlineText, { color: colors.primary.main }]}>
             {event.reminderEnabled ? '🔔 Reminder On' : '🔕 Set Reminder'}
-          </Text>
+          </ThemedText>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-        <Text style={styles.shareText}>Share Event</Text>
+      <TouchableOpacity style={[styles.shareButton, { backgroundColor: colors.background.secondary }]} onPress={handleShare}>
+        <ThemedText style={styles.shareText}>Share Event</ThemedText>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -198,7 +196,6 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0f172a',
   },
   infoCard: {
     backgroundColor: '#f8fafc',
@@ -212,15 +209,12 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
     textTransform: 'uppercase',
   },
   infoValue: {
     fontSize: 16,
-    color: '#0f172a',
   },
   link: {
-    color: '#2563eb',
     textDecorationLine: 'underline',
   },
   sectionTitle: {

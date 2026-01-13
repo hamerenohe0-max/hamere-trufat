@@ -237,7 +237,7 @@ export interface ReminderPreference {
 
 export interface GameScore {
   id: string;
-  game: 'trivia' | 'puzzle' | 'saint' | 'memory';
+  game: 'trivia' | 'puzzle' | 'saint' | 'memory' | 'who-said-it' | 'charades' | 'scramble' | 'parable' | 'bingo' | 'journey' | 'virtue' | 'history' | 'matchup';
   score: number;
   createdAt: string;
   metadata?: Record<string, unknown>;

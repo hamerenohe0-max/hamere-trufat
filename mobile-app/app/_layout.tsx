@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { OfflineBanner } from '../src/components/OfflineBanner';
 import { registerBackgroundSync } from '../src/services/offline/background-sync';
+import { ThemeProvider } from '../src/components/ThemeProvider';
 
 // Hide native splash screen immediately - we're using a custom one
 SplashScreen.hideAsync();
@@ -19,7 +20,7 @@ export default function RootLayout() {
             retry: 3,
             retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
             staleTime: 1000 * 60 * 5, // 5 minutes
-            cacheTime: 1000 * 60 * 60 * 24, // 24 hours
+            gcTime: 1000 * 60 * 60 * 24, // 24 hours
           },
         },
       }),
@@ -35,14 +36,16 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <OfflineBanner />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(protected)" />
-          </Stack>
-        </QueryClientProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <OfflineBanner />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(protected)" />
+            </Stack>
+          </QueryClientProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );

@@ -8,7 +8,8 @@ import {
 } from '../../../../src/features/articles/hooks/useArticles';
 import { PublisherProfile } from '../../../../src/features/articles/components/PublisherProfile';
 import { ArticleCard } from '../../../../src/features/articles/components/ArticleCard';
-import { colors } from '../../../../src/config/colors';
+import { useTheme } from '../../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../../src/components/ThemedText';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -19,10 +20,11 @@ export default function AuthorScreen() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [activeTab, setActiveTab] = useState<'posts' | 'about'>('posts');
+  const { colors, fontScale, isDark } = useTheme();
 
   if (authorQuery.isLoading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background.primary }]}>
         <ActivityIndicator size="large" color={colors.primary.main} />
       </View>
     );
@@ -30,8 +32,8 @@ export default function AuthorScreen() {
 
   if (!authorQuery.data) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.emptyText}>Author not found</Text>
+      <View style={[styles.center, { backgroundColor: colors.background.primary }]}>
+        <ThemedText style={styles.emptyText}>Author not found</ThemedText>
       </View>
     );
   }
@@ -57,8 +59,8 @@ export default function AuthorScreen() {
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="document-text-outline" size={64} color={colors.text.tertiary} />
-          <Text style={styles.emptyText}>No articles yet</Text>
-          <Text style={styles.emptySubtext}>Check back later for new content</Text>
+          <ThemedText style={styles.emptyText}>No articles yet</ThemedText>
+          <ThemedText style={styles.emptySubtext}>Check back later for new content</ThemedText>
         </View>
       );
     }
@@ -66,23 +68,23 @@ export default function AuthorScreen() {
     if (viewMode === 'grid') {
       return (
         <View style={styles.gridContainer}>
-          {articles.map((article) => {
-            const coverImage = article.images && article.images.length > 0 
-              ? article.images[0] 
+          {(articles as any[]).map((article) => {
+            const coverImage = article.images && article.images.length > 0
+              ? article.images[0]
               : article.coverImage;
             return (
               <Link key={article.id} href={`/(protected)/articles/${article.id}`} asChild>
-                <TouchableOpacity style={styles.gridItem}>
+                <TouchableOpacity style={[styles.gridItem, { backgroundColor: colors.background.secondary }]}>
                   {coverImage ? (
                     <Image source={{ uri: coverImage }} style={styles.gridImage} />
                   ) : (
-                    <View style={[styles.gridImage, styles.gridImagePlaceholder]}>
+                    <View style={[styles.gridImage, styles.gridImagePlaceholder, { backgroundColor: colors.background.tertiary }]}>
                       <Ionicons name="document-text" size={32} color={colors.text.tertiary} />
                     </View>
                   )}
                   <View style={styles.gridOverlay}>
                     <Ionicons name="heart-outline" size={16} color={colors.text.inverse} />
-                    <Text style={styles.gridLikes}>{article.reactions?.likes || 0}</Text>
+                    <ThemedText style={styles.gridLikes}>{article.reactions?.likes || 0}</ThemedText>
                   </View>
                 </TouchableOpacity>
               </Link>
@@ -94,7 +96,7 @@ export default function AuthorScreen() {
 
     return (
       <View style={styles.listContainer}>
-        {articles.map((article) => (
+        {(articles as any[]).map((article) => (
           <ArticleCard key={article.id} article={article} />
         ))}
       </View>
@@ -102,8 +104,8 @@ export default function AuthorScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background.secondary }]} edges={['top']}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background.secondary }]} showsVerticalScrollIndicator={false}>
         {/* Social Media Style Profile Header */}
         <PublisherProfile
           author={author}
@@ -150,39 +152,39 @@ export default function AuthorScreen() {
           </>
         ) : (
           <View style={styles.aboutSection}>
-            <View style={styles.aboutCard}>
-              <Text style={styles.aboutTitle}>About</Text>
+            <View style={[styles.aboutCard, { backgroundColor: colors.background.primary }]}>
+              <ThemedText style={styles.aboutTitle}>About</ThemedText>
               {author.bio ? (
-                <Text style={styles.aboutText}>{author.bio}</Text>
+                <ThemedText style={styles.aboutText}>{author.bio}</ThemedText>
               ) : (
-                <Text style={styles.aboutEmpty}>No bio available</Text>
+                <ThemedText style={styles.aboutEmpty}>No bio available</ThemedText>
               )}
             </View>
-            <View style={styles.aboutCard}>
-              <Text style={styles.aboutTitle}>Statistics</Text>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Total Articles</Text>
-                <Text style={styles.statValue}>{articles.length}</Text>
+            <View style={[styles.aboutCard, { backgroundColor: colors.background.primary }]}>
+              <ThemedText style={styles.aboutTitle}>Statistics</ThemedText>
+              <View style={[styles.statRow, { borderBottomColor: colors.border.light }]}>
+                <ThemedText style={styles.statLabel}>Total Articles</ThemedText>
+                <ThemedText style={styles.statValue}>{articles.length}</ThemedText>
               </View>
               {author.followers !== undefined && (
-                <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>Followers</Text>
-                  <Text style={styles.statValue}>
-                    {author.followers >= 1000 
-                      ? `${(author.followers / 1000).toFixed(1)}K` 
+                <View style={[styles.statRow, { borderBottomColor: colors.border.light }]}>
+                  <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                  <ThemedText style={styles.statValue}>
+                    {author.followers >= 1000
+                      ? `${(author.followers / 1000).toFixed(1)}K`
                       : author.followers}
-                  </Text>
+                  </ThemedText>
                 </View>
               )}
               {author.createdAt && (
-                <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>Member Since</Text>
-                  <Text style={styles.statValue}>
+                <View style={[styles.statRow, { borderBottomColor: colors.border.light }]}>
+                  <ThemedText style={styles.statLabel}>Member Since</ThemedText>
+                  <ThemedText style={styles.statValue}>
                     {new Date(author.createdAt).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                     })}
-                  </Text>
+                  </ThemedText>
                 </View>
               )}
             </View>
@@ -196,11 +198,9 @@ export default function AuthorScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
   },
   container: {
     paddingBottom: 40,
-    backgroundColor: colors.background.secondary,
   },
   center: {
     flex: 1,
@@ -209,13 +209,11 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   emptyText: {
-    color: colors.text.tertiary,
     fontSize: 18,
     fontWeight: '600',
     marginTop: 16,
   },
   emptySubtext: {
-    color: colors.text.tertiary,
     fontSize: 14,
     marginTop: 8,
   },
@@ -227,7 +225,6 @@ const styles = StyleSheet.create({
   },
   viewModeContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.background.primary,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 8,
@@ -242,7 +239,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   viewModeButtonActive: {
-    backgroundColor: colors.neutral.gray[100],
   },
   articlesSection: {
     paddingHorizontal: 16,
@@ -264,12 +260,10 @@ const styles = StyleSheet.create({
   gridImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.neutral.gray[200],
   },
   gridImagePlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.neutral.gray[100],
   },
   gridOverlay: {
     position: 'absolute',
@@ -284,7 +278,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   gridLikes: {
-    color: colors.text.inverse,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -298,7 +291,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   aboutCard: {
-    backgroundColor: colors.background.primary,
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -306,17 +298,14 @@ const styles = StyleSheet.create({
   aboutTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text.primary,
     marginBottom: 8,
   },
   aboutText: {
     fontSize: 14,
-    color: colors.text.secondary,
     lineHeight: 22,
   },
   aboutEmpty: {
     fontSize: 14,
-    color: colors.text.tertiary,
     fontStyle: 'italic',
   },
   statRow: {
@@ -325,16 +314,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
   },
   statLabel: {
     fontSize: 14,
-    color: colors.text.secondary,
   },
   statValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text.primary,
   },
 });
 

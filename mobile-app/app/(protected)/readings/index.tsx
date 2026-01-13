@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   ScrollView,
@@ -12,7 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePrayerReading } from '../../../src/features/prayers/hooks/usePrayerReading';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../../src/config/colors';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 import { AudioPlayer } from '../../../src/components/AudioPlayer';
 
 function formatDate(date: Date) {
@@ -42,11 +44,13 @@ function formatDisplayDate(dateString: string) {
 }
 
 export default function DailyReadingsScreen() {
+  const router = useRouter();
   const [date, setDate] = useState(() => formatDate(new Date()));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activeTab, setActiveTab] = useState<'Morning' | 'Evening'>('Morning');
   const readingQuery = usePrayerReading(date);
   const [language, setLanguage] = useState<'geez' | 'amharic'>('geez');
+  const { colors, fontScale, isDark } = useTheme();
 
   // Filter reading based on active tab
   const reading = useMemo(() => {
@@ -79,21 +83,29 @@ export default function DailyReadingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.heading}>Daily Readings</Text>
-        <View style={styles.langToggle}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background.primary }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: colors.border.light }]}>
+        <ThemedText style={styles.heading}>Daily Readings</ThemedText>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={styles.langToggle}>
+            <TouchableOpacity
+              style={[styles.langButton, language === 'geez' && [styles.langButtonActive, { backgroundColor: colors.background.primary }]]}
+              onPress={() => setLanguage('geez')}
+            >
+              <ThemedText style={[styles.langText, language === 'geez' && [styles.langTextActive, { color: colors.secondary.main }]]}>Geez</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langButton, language === 'amharic' && [styles.langButtonActive, { backgroundColor: colors.background.primary }]]}
+              onPress={() => setLanguage('amharic')}
+            >
+              <ThemedText style={[styles.langText, language === 'amharic' && [styles.langTextActive, { color: colors.secondary.main }]]}>Amharic</ThemedText>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
-            style={[styles.langButton, language === 'geez' && styles.langButtonActive]}
-            onPress={() => setLanguage('geez')}
+            style={[styles.langButton, { backgroundColor: colors.background.secondary, justifyContent: 'center' }]}
+            onPress={() => router.push('/(protected)/readings/alarms')}
           >
-            <Text style={[styles.langText, language === 'geez' && styles.langTextActive]}>Geez</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.langButton, language === 'amharic' && styles.langButtonActive]}
-            onPress={() => setLanguage('amharic')}
-          >
-            <Text style={[styles.langText, language === 'amharic' && styles.langTextActive]}>Amharic</Text>
+            <Ionicons name="alarm-outline" size={20} color={colors.secondary.main} />
           </TouchableOpacity>
         </View>
       </View>
@@ -101,36 +113,36 @@ export default function DailyReadingsScreen() {
       <ScrollView contentContainerStyle={styles.container}>
 
         {/* Date Navigation */}
-        <View style={styles.dateNavContainer}>
+        <View style={[styles.dateNavContainer, { backgroundColor: colors.background.secondary }]}>
           <TouchableOpacity onPress={goToPreviousDay} style={styles.navArrowButton}>
-            <Ionicons name="chevron-back" size={24} color={colors.primary.main} />
+            <Ionicons name="chevron-back" size={24} color={colors.secondary.main} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateSelector}>
-            <Text style={styles.dateDisplay}>{formatDisplayDate(date)}</Text>
-            <Ionicons name="calendar-outline" size={20} color="#64748b" />
+            <ThemedText style={styles.dateDisplay}>{formatDisplayDate(date)}</ThemedText>
+            <Ionicons name="calendar-outline" size={20} color={colors.text.tertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={goToNextDay} style={styles.navArrowButton}>
-            <Ionicons name="chevron-forward" size={24} color={colors.primary.main} />
+            <Ionicons name="chevron-forward" size={24} color={colors.secondary.main} />
           </TouchableOpacity>
         </View>
 
         {/* Morning/Evening Toggle */}
-        <View style={styles.tabContainer}>
+        <View style={[styles.tabContainer, { backgroundColor: colors.background.secondary }]}>
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'Morning' && styles.tabButtonActive]}
+            style={[styles.tabButton, activeTab === 'Morning' && [styles.tabButtonActive, { backgroundColor: colors.secondary.main }]]}
             onPress={() => setActiveTab('Morning')}
           >
-            <Ionicons name="sunny-outline" size={18} color={activeTab === 'Morning' ? '#fff' : '#64748b'} />
-            <Text style={[styles.tabText, activeTab === 'Morning' && styles.tabTextActive]}>Morning</Text>
+            <Ionicons name="sunny-outline" size={18} color={activeTab === 'Morning' ? '#fff' : colors.text.tertiary} />
+            <ThemedText style={[styles.tabText, activeTab === 'Morning' && styles.tabTextActive]}>Morning</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'Evening' && styles.tabButtonActive]}
+            style={[styles.tabButton, activeTab === 'Evening' && [styles.tabButtonActive, { backgroundColor: colors.secondary.main }]]}
             onPress={() => setActiveTab('Evening')}
           >
-            <Ionicons name="moon-outline" size={18} color={activeTab === 'Evening' ? '#fff' : '#64748b'} />
-            <Text style={[styles.tabText, activeTab === 'Evening' && styles.tabTextActive]}>Evening</Text>
+            <Ionicons name="moon-outline" size={18} color={activeTab === 'Evening' ? '#fff' : colors.text.tertiary} />
+            <ThemedText style={[styles.tabText, activeTab === 'Evening' && styles.tabTextActive]}>Evening</ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -141,16 +153,16 @@ export default function DailyReadingsScreen() {
           onRequestClose={() => setShowDatePicker(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Date</Text>
+            <View style={[styles.modalContent, { backgroundColor: colors.background.primary }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border.light }]}>
+                <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
                 <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Ionicons name="close" size={24} color="#64748b" />
+                  <Ionicons name="close" size={24} color={colors.text.tertiary} />
                 </TouchableOpacity>
               </View>
               <ScrollView style={styles.dateList}>
-                <TouchableOpacity onPress={goToToday} style={styles.dateListItem}>
-                  <Text style={styles.dateListItemText}>Go to Today</Text>
+                <TouchableOpacity onPress={goToToday} style={[styles.dateListItem, { backgroundColor: colors.background.secondary }]}>
+                  <ThemedText style={styles.dateListItemText}>Go to Today</ThemedText>
                 </TouchableOpacity>
               </ScrollView>
             </View>
@@ -195,41 +207,42 @@ export default function DailyReadingsScreen() {
 
             <View style={styles.actions}>
               <TouchableOpacity
-                style={styles.actionButton}
+                style={[styles.actionButton, { backgroundColor: colors.primary.main }]}
                 onPress={() =>
                   Share.share({
                     message: `${activeTab} Reading for ${date}\n\nGospel:\n${language === 'geez' ? reading.gospelGeez : reading.gospelAmharic}`,
                   })
                 }
               >
-                <Text style={styles.actionText}>Share Reading</Text>
+                <ThemedText style={styles.actionText}>Share Reading</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
-          <Text style={styles.empty}>No {activeTab.toLowerCase()} readings available for this date.</Text>
+          <ThemedText style={styles.empty}>No {activeTab.toLowerCase()} readings available for this date.</ThemedText>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
 function ReadingSection({ title, refText, audioUrl, text }: { title: string, refText?: string, audioUrl?: string, text?: string }) {
-  if (!text && !audioUrl) return null; // Don't hide if text is missing but audio exists? Or usually text is primary.
+  if (!text && !audioUrl) return null;
+  const { colors } = useTheme();
 
   return (
     <View>
       <View style={styles.sectionHeader}>
-        <View style={styles.sectionBar} />
+        <View style={[styles.sectionBar, { backgroundColor: colors.primary.main }]} />
         <View>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {refText && <Text style={styles.referenceText}>{refText}</Text>}
+          <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
+          {refText && <ThemedText style={styles.referenceText}>{refText}</ThemedText>}
         </View>
       </View>
       {audioUrl && <AudioPlayer uri={audioUrl} title={`${title} Reading`} />}
-      <Text style={styles.body}>
+      <ThemedText style={styles.body}>
         {text || 'Text not available'}
-      </Text>
+      </ThemedText>
     </View>
   );
 }
@@ -251,7 +264,6 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#0f172a',
   },
   langToggle: {
     flexDirection: 'row',
@@ -278,7 +290,6 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   langTextActive: {
-    color: colors.primary.main,
   },
   container: {
     padding: 24,
@@ -310,7 +321,6 @@ const styles = StyleSheet.create({
   dateDisplay: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0f172a',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -330,12 +340,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabButtonActive: {
-    backgroundColor: colors.primary.main,
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748b',
   },
   tabTextActive: {
     color: '#fff',
@@ -350,13 +358,11 @@ const styles = StyleSheet.create({
   sectionBar: {
     width: 4,
     height: 32,
-    backgroundColor: colors.primary.main,
     borderRadius: 2,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
   },
   referenceText: {
     fontSize: 14,
@@ -366,7 +372,6 @@ const styles = StyleSheet.create({
   body: {
     fontSize: 16,
     lineHeight: 28,
-    color: '#334155',
     marginBottom: 8,
   },
   actions: {
@@ -376,7 +381,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: colors.primary.main,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',

@@ -10,26 +10,32 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNewsList } from '../../src/features/news/hooks/useNews';
 import { useEvents } from '../../src/features/events/hooks/useEvents';
 import { useDailyReading } from '../../src/features/readings/hooks/useDailyReading';
 import { useArticlesList } from '../../src/features/articles/hooks/useArticles';
-import { colors } from '../../src/config/colors';
-import { formatSimpleDate, formatEventDate } from '../../src/utils/dateFormat';
-// import { Ionicons } from '@expo/vector-icons'; // Assuming standard expo vector icons
+import { formatSimpleDate } from '../../src/utils/dateFormat';
+import { useTheme } from '../../src/components/ThemeProvider';
+import { ThemedText } from '../../src/components/ThemedText';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  
+  const { colors, fontScale, isDark } = useTheme();
+
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
-  
+
   const newsQuery = useNewsList();
   const eventsQuery = useEvents();
   const articlesQuery = useArticlesList();
   const readingQuery = useDailyReading(today);
+
+  // Theme-derived background colors
+  const screenBg = isDark ? colors.background.primary : colors.background.secondary;
+  const cardBg = isDark ? colors.background.secondary : colors.background.primary;
 
   const onRefresh = () => {
     newsQuery.refetch();
@@ -41,183 +47,199 @@ export default function HomeScreen() {
   const isLoading = newsQuery.isLoading || eventsQuery.isLoading || articlesQuery.isLoading || readingQuery.isLoading;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: screenBg }]} edges={['top']}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { backgroundColor: screenBg }]}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+          <RefreshControl refreshing={isLoading} onRefresh={onRefresh} tintColor={colors.primary.main} />
         }
       >
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.date}>
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View>
+            <ThemedText style={styles.date}>
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+              })}
+            </ThemedText>
+            <ThemedText style={styles.greeting}>
+              Hello, {user?.name?.split(' ')[0] ?? 'Friend'}
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => router.push('/(protected)/settings')}
+          >
+            {user?.image ? (
+              <Image source={{ uri: user.image }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: isDark ? colors.secondary.lighter : colors.primary.light }]}>
+                <Ionicons name="person" size={20} color={isDark ? colors.secondary.main : colors.primary.main} />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Daily Reading Section */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Daily Word</ThemedText>
+          <TouchableOpacity
+            style={[styles.readingCard, { backgroundColor: cardBg, borderColor: colors.border.light }]}
+            onPress={() => router.push('/(protected)/readings')}
+          >
+            {readingQuery.data ? (
+              <>
+                <Link href="/(protected)/readings" asChild>
+                  <TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                      <View style={{ width: 4, height: 40, backgroundColor: isDark ? colors.secondary.main : colors.primary.main, borderRadius: 2, marginRight: 12 }} />
+                      <View>
+                        <ThemedText style={styles.readingTitle}>{readingQuery.data.gospel.title}</ThemedText>
+                        <ThemedText style={styles.readingRef}>{readingQuery.data.gospel.reference}</ThemedText>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </Link>
+                <ThemedText style={styles.readingSnippet} numberOfLines={3}>
+                  {readingQuery.data.gospel.body}
+                </ThemedText>
+                <ThemedText style={[styles.readMore, { color: isDark ? colors.secondary.main : colors.primary.main }]}>Tap to read more</ThemedText>
+              </>
+            ) : (
+              <ThemedText style={{ color: colors.text.secondary }}>Loading daily reading...</ThemedText>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Latest News Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Latest News</ThemedText>
+            <Link href="/(protected)/news" asChild>
+              <TouchableOpacity>
+                <ThemedText style={[styles.viewMore, { color: colors.primary.main }]}>View All</ThemedText>
+              </TouchableOpacity>
+            </Link>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+            {(newsQuery.data as any[])?.slice(0, 5).map((news: any) => {
+              // Get images from images array or fall back to coverImage
+              let newsImages: string[] = [];
+              if (news.images && Array.isArray(news.images) && news.images.length > 0) {
+                newsImages = news.images.filter((img: any) => img && typeof img === 'string' && img.trim().length > 0);
+              }
+              if (newsImages.length === 0 && news.coverImage && typeof news.coverImage === 'string' && news.coverImage.trim().length > 0) {
+                newsImages = [news.coverImage];
+              }
+              const coverImage = newsImages.length > 0 ? newsImages[0] : null;
+
+              return (
+                <Link key={news.id} href={`/(protected)/news/${news.id}`} asChild>
+                  <TouchableOpacity style={[styles.newsCard, { backgroundColor: cardBg }]}>
+                    {coverImage ? (
+                      <Image
+                        source={{ uri: coverImage }}
+                        style={styles.newsImage}
+                        resizeMode="cover"
+                        onError={(error) => {
+                          console.error('News image load error on home:', error.nativeEvent.error);
+                        }}
+                      />
+                    ) : (
+                      <View style={styles.newsImagePlaceholder} />
+                    )}
+                    <View style={styles.newsContent}>
+                      <ThemedText style={styles.newsTitle} numberOfLines={2}>{news.title}</ThemedText>
+                      <ThemedText style={styles.newsDate}>
+                        {formatSimpleDate(news.publishedAt || news.createdAt)}
+                      </ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                </Link>
+              );
             })}
-          </Text>
-          <Text style={styles.greeting}>
-            Hello, {user?.name?.split(' ')[0] ?? 'Friend'}
-          </Text>
+          </ScrollView>
         </View>
-        <TouchableOpacity 
-           style={styles.profileButton}
-           onPress={() => router.push('/(protected)/settings')}
-        >
-           {/* Placeholder for user avatar or icon */}
-           <View style={styles.avatarPlaceholder} />
-        </TouchableOpacity>
-      </View>
 
-      {/* Daily Reading Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Daily Word</Text>
-        <TouchableOpacity 
-          style={styles.readingCard}
-          onPress={() => router.push('/(protected)/readings')}
-        >
-          {readingQuery.data ? (
-            <>
-              <Text style={styles.readingTitle}>{readingQuery.data.gospel.title}</Text>
-              <Text style={styles.readingRef}>{readingQuery.data.gospel.reference}</Text>
-              <Text style={styles.readingSnippet} numberOfLines={3}>
-                {readingQuery.data.gospel.body}
-              </Text>
-              <Text style={styles.readMore}>Tap to read more</Text>
-            </>
-          ) : (
-            <Text style={{color: '#64748b'}}>Loading daily reading...</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+        {/* Latest Articles Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Latest Articles</ThemedText>
+            <Link href="/(protected)/articles" asChild>
+              <TouchableOpacity>
+                <ThemedText style={[styles.viewMore, { color: colors.primary.main }]}>View All</ThemedText>
+              </TouchableOpacity>
+            </Link>
+          </View>
 
-      {/* Latest News Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Latest News</Text>
-          <Link href="/(protected)/news" asChild>
-            <TouchableOpacity>
-              <Text style={styles.viewMore}>View All</Text>
-            </TouchableOpacity>
-          </Link>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+            {(articlesQuery.data as any[])?.slice(0, 5).map((article: any) => {
+              const coverImage = (article.images && article.images.length > 0)
+                ? article.images[0]
+                : article.coverImage;
+
+              return (
+                <Link key={article.id} href={`/(protected)/articles/${article.id}`} asChild>
+                  <TouchableOpacity style={[styles.articleCard, { backgroundColor: cardBg }]}>
+                    {/* Article cover image */}
+                    {coverImage ? (
+                      <Image
+                        source={{ uri: coverImage }}
+                        style={styles.articleImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.articleImagePlaceholder} />
+                    )}
+                    <View style={styles.articleContent}>
+                      <ThemedText style={styles.articleTitle} numberOfLines={2}>{article.title}</ThemedText>
+                      <ThemedText style={styles.articleExcerpt} numberOfLines={2}>
+                        {article.excerpt}
+                      </ThemedText>
+                      <ThemedText style={styles.articleMeta}>
+                        {article.author?.name ?? 'Hamere Trufat'} • {article.readingTime}
+                      </ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                </Link>
+              );
+            })}
+          </ScrollView>
         </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-          {newsQuery.data?.slice(0, 5).map((news) => {
-            // Get images from images array or fall back to coverImage
-            let newsImages: string[] = [];
-            if (news.images && Array.isArray(news.images) && news.images.length > 0) {
-              newsImages = news.images.filter((img) => img && typeof img === 'string' && img.trim().length > 0);
-            }
-            if (newsImages.length === 0 && news.coverImage && typeof news.coverImage === 'string' && news.coverImage.trim().length > 0) {
-              newsImages = [news.coverImage];
-            }
-            const coverImage = newsImages.length > 0 ? newsImages[0] : null;
-            
-            return (
-             <Link key={news.id} href={`/(protected)/news/${news.id}`} asChild>
-               <TouchableOpacity style={styles.newsCard}>
-                  {coverImage ? (
-                    <Image 
-                      source={{ uri: coverImage }} 
-                      style={styles.newsImage}
-                      resizeMode="cover"
-                      onError={(error) => {
-                        console.error('News image load error on home:', error.nativeEvent.error);
-                      }}
-                    />
-                  ) : (
-                    <View style={styles.newsImagePlaceholder} />
-                  )}
-                  <View style={styles.newsContent}>
-                    <Text style={styles.newsTitle} numberOfLines={2}>{news.title}</Text>
-                    <Text style={styles.newsDate}>
-                      {formatSimpleDate(news.publishedAt || news.createdAt)}
-                    </Text>
+
+        {/* Upcoming Events Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Upcoming Events</ThemedText>
+            <Link href="/(protected)/events" asChild>
+              <TouchableOpacity>
+                <ThemedText style={[styles.viewMore, { color: colors.primary.main }]}>View All</ThemedText>
+              </TouchableOpacity>
+            </Link>
+          </View>
+
+          <View style={styles.eventsList}>
+            {(eventsQuery.data as any[])?.slice(0, 3).map((event: any) => (
+              <Link key={event.id} href={`/(protected)/events/${event.id}`} asChild>
+                <TouchableOpacity style={[styles.eventCard, { backgroundColor: cardBg }]}>
+                  <View style={[styles.eventDateBox, { backgroundColor: colors.primary.lighter + '20' }]}>
+                    <ThemedText style={[styles.eventDay, { color: colors.primary.main }]}>{new Date(event.startDate).getDate()}</ThemedText>
+                    <ThemedText style={[styles.eventMonth, { color: colors.primary.main }]}>
+                      {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short' })}
+                    </ThemedText>
                   </View>
-               </TouchableOpacity>
-             </Link>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Latest Articles Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Latest Articles</Text>
-          <Link href="/(protected)/articles" asChild>
-            <TouchableOpacity>
-              <Text style={styles.viewMore}>View All</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-          {articlesQuery.data?.slice(0, 5).map((article) => {
-            const coverImage = (article.images && article.images.length > 0) 
-              ? article.images[0] 
-              : article.coverImage;
-            
-            return (
-              <Link key={article.id} href={`/(protected)/articles/${article.id}`} asChild>
-                <TouchableOpacity style={styles.articleCard}>
-                  {/* Article cover image */}
-                  {coverImage ? (
-                    <Image 
-                      source={{ uri: coverImage }} 
-                      style={styles.articleImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.articleImagePlaceholder} />
-                  )}
-                  <View style={styles.articleContent}>
-                    <Text style={styles.articleTitle} numberOfLines={2}>{article.title}</Text>
-                    <Text style={styles.articleExcerpt} numberOfLines={2}>
-                      {article.excerpt}
-                    </Text>
-                    <Text style={styles.articleMeta}>
-                      {article.author?.name ?? 'Hamere Trufat'} • {article.readingTime}
-                    </Text>
+                  <View style={styles.eventDetails}>
+                    <ThemedText style={styles.eventTitle}>{event.name}</ThemedText>
+                    <ThemedText style={styles.eventLocation}>{event.location}</ThemedText>
                   </View>
                 </TouchableOpacity>
               </Link>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Upcoming Events Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
-          <Link href="/(protected)/events" asChild>
-            <TouchableOpacity>
-               <Text style={styles.viewMore}>View All</Text>
-            </TouchableOpacity>
-          </Link>
+            ))}
+          </View>
         </View>
-        
-        {eventsQuery.data?.slice(0, 3).map((event) => (
-          <Link key={event.id} href={`/(protected)/events/${event.id}`} asChild>
-            <TouchableOpacity style={styles.eventCard}>
-              <View style={styles.eventDateBox}>
-                <Text style={styles.eventDay}>{new Date(event.startDate).getDate()}</Text>
-                <Text style={styles.eventMonth}>
-                  {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </Text>
-              </View>
-              <View style={styles.eventDetails}>
-                <Text style={styles.eventTitle}>{event.name}</Text>
-                <Text style={styles.eventLocation}>{event.location}</Text>
-              </View>
-            </TouchableOpacity>
-          </Link>
-        ))}
-      </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -225,10 +247,12 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     padding: 24,
     paddingTop: 16,
-    backgroundColor: '#f8fafc',
     gap: 32,
     paddingBottom: 40,
   },
@@ -238,7 +262,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   date: {
-    color: '#64748b',
     textTransform: 'uppercase',
     fontSize: 12,
     fontWeight: '600',
@@ -247,7 +270,6 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0f172a',
   },
   profileButton: {
     padding: 4,
@@ -256,7 +278,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#cbd5e1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   section: {
     gap: 16,
@@ -269,46 +297,48 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0f172a',
   },
   viewMore: {
-    color: colors.primary.main,
     fontWeight: '600',
     fontSize: 14,
   },
   // Reading Card
   readingCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: colors.primary.main,
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 20,
-    elevation: 4,
-    gap: 8,
+    borderRadius: 16,
+    padding: 20,
+    // Subtle shadow
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 12,
+    elevation: 2,
+    // Border for definition
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 12,
   },
   readingTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#0f172a',
+    letterSpacing: -0.5,
   },
   readingRef: {
-    color: colors.primary.main,
-    fontWeight: '600',
     fontSize: 14,
+    fontWeight: '600',
+    marginTop: -4,
     marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   readingSnippet: {
-    color: '#475569',
-    lineHeight: 22,
-    fontSize: 15,
+    lineHeight: 24,
+    fontSize: 16,
+    fontFamily: 'System', // Uses system font with good readability
   },
   readMore: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginTop: 8,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
   },
   // News
   horizontalScroll: {
@@ -316,9 +346,9 @@ const styles = StyleSheet.create({
     paddingRight: 24,
   },
   newsCard: {
-    width: 280,
+    width: 240,
+    height: 280,
     marginRight: 16,
-    backgroundColor: '#fff',
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -329,7 +359,7 @@ const styles = StyleSheet.create({
   },
   newsImage: {
     width: '100%',
-    height: 180,
+    height: 140,
     borderRadius: 12,
     backgroundColor: '#f1f5f9',
     marginBottom: 8,
@@ -340,23 +370,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#e2e8f0',
   },
   newsContent: {
+    flex: 1,
     padding: 16,
+    justifyContent: 'space-between',
     gap: 8,
   },
   newsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0f172a',
     lineHeight: 22,
   },
   newsDate: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: '#9D6531', // Secondary color for date/info
   },
   // Events
+  eventsList: {
+    gap: 12,
+  },
   eventCard: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -369,7 +402,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   eventDateBox: {
-    backgroundColor: colors.primary.lighter + '20', // 20% opacity
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -378,12 +410,10 @@ const styles = StyleSheet.create({
   eventDay: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.primary.main,
   },
   eventMonth: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.primary.main,
     textTransform: 'uppercase',
   },
   eventDetails: {
@@ -393,16 +423,14 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0f172a',
   },
   eventLocation: {
     fontSize: 14,
-    color: '#64748b',
   },
   // Articles
   articleCard: {
-    width: 280,
-    backgroundColor: '#fff',
+    width: 240,
+    height: 280,
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -422,23 +450,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#e2e8f0',
   },
   articleContent: {
+    flex: 1,
     padding: 16,
+    justifyContent: 'space-between',
     gap: 8,
   },
   articleTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0f172a',
     lineHeight: 22,
   },
   articleExcerpt: {
     fontSize: 14,
-    color: '#475569',
     lineHeight: 20,
   },
   articleMeta: {
     fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 4,
+    color: '#9D6531', // Secondary color for author/meta
   },
 });

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { colors } from '../config/colors';
+import { useTheme } from './ThemeProvider';
 
 interface TabItem {
   name: string;
@@ -27,6 +28,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
 
   const isActive = (route: string) => {
     if (route === '/(protected)/home') {
@@ -36,17 +38,43 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
     return pathname?.startsWith(routePath);
   };
 
+  // Dynamic Theme Styles
+  const containerStyle = {
+    backgroundColor: isDark ? colors.primary.main : '#ffffff',
+    borderTopWidth: isDark ? 0 : 1,
+    borderTopColor: '#e2e8f0',
+  };
+
+  const getIconColor = (active: boolean) => {
+    if (isDark) {
+      return active ? colors.secondary.main : 'rgba(255, 255, 255, 0.6)';
+    }
+    // Light Mode: Primary Green for active, Gray for inactive
+    return active ? colors.primary.main : colors.neutral.gray[400];
+  };
+
+  const getLabelDotColor = () => {
+    return isDark ? colors.secondary.main : colors.primary.main;
+  };
+
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={[styles.container, containerStyle, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.tabBar}>
         {tabs.map((tab, index) => {
           const active = isActive(tab.route);
-          
+
           if (tab.isHome) {
             return (
               <View key={tab.name} style={styles.homeContainer}>
                 <TouchableOpacity
-                  style={[styles.homeButton, active && styles.homeButtonActive]}
+                  style={[
+                    styles.homeButton,
+                    active && styles.homeButtonActive,
+                    {
+                      backgroundColor: isDark ? colors.secondary.main : colors.primary.main,
+                      borderColor: isDark ? colors.primary.main : '#ffffff',
+                    }
+                  ]}
                   onPress={() => router.push(tab.route)}
                   activeOpacity={0.7}
                 >
@@ -71,10 +99,14 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
               <Ionicons
                 name={tab.icon}
                 size={22}
-                color={active ? colors.primary.main : colors.neutral.gray[400]}
+                color={getIconColor(active)}
               />
               <View style={styles.labelContainer}>
-                <View style={[styles.labelDot, active && styles.labelDotActive]} />
+                <View style={[
+                  styles.labelDot,
+                  active && styles.labelDotActive,
+                  active && { backgroundColor: getLabelDotColor() }
+                ]} />
               </View>
             </TouchableOpacity>
           );
@@ -86,14 +118,12 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    // Base container styles
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.1,
         shadowRadius: 8,
       },
       android: {
@@ -128,14 +158,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primary.main,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#ffffff',
     ...Platform.select({
       ios: {
-        shadowColor: colors.primary.main,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -146,10 +174,8 @@ const styles = StyleSheet.create({
     }),
   },
   homeButtonActive: {
-    backgroundColor: colors.primary.dark,
     transform: [{ scale: 1.1 }],
     borderWidth: 4,
-    borderColor: '#ffffff',
   },
   homePulse: {
     position: 'absolute',
@@ -173,7 +199,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   labelDotActive: {
-    backgroundColor: colors.primary.main,
     width: 20,
   },
 });

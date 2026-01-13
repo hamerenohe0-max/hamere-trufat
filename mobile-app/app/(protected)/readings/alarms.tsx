@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Switch, FlatList, StyleSheet, Alert, TouchableOpacity } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../../config/colors';
-import { NotificationService, DEFAULT_PRAYER_ALARMS, PrayerAlarm } from '../../../services/NotificationService';
+import { colors } from '../../../src/config/colors';
+import { NotificationService, DEFAULT_PRAYER_ALARMS, PrayerAlarm } from '../../../src/services/NotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ALARMS_STORAGE_KEY = 'prayer_alarms_settings';
@@ -46,39 +47,6 @@ export default function AlarmsScreen() {
         setAlarms(newAlarms);
         saveSettings(newAlarms);
 
-        const alarmToUpdate = newAlarms.find(a => a.id === id);
-
-        if (value && alarmToUpdate) {
-            await NotificationService.scheduleNotificationAsync(alarmToUpdate);
-            Alert.alert('Alarm Set', `Notification set for ${alarmToUpdate.title} at ${alarmToUpdate.hour}:00`);
-        } else {
-            // In a real app with notification IDs, we would cancel the specific ID.
-            // For now, re-scheduling all active alarms is a safe brute-force strategy
-            // or simply cancelling all and re-adding enabled ones.
-            await NotificationService.cancelAllNotifications();
-            const enabledAlarms = newAlarms.filter(a => a.enabled);
-            for (const alarm of enabledAlarms) {
-                await NotificationService.scheduleNotificationAsync(alarm);
-            }
-        }
-    };
-
-    // Fix: Update NotificationService to match the call signature used above if needed
-    // or update this component to match the service. 
-    // The service defined previously uses `schedulePrayerAlarm`. 
-    // Adapting the toggle logic:
-
-    const toggleAlarmCorrected = async (id: string, value: boolean) => {
-        const newAlarms = alarms.map(alarm => {
-            if (alarm.id === id) {
-                return { ...alarm, enabled: value };
-            }
-            return alarm;
-        });
-
-        setAlarms(newAlarms);
-        saveSettings(newAlarms);
-
         // Brute force reset: Cancel all and reschedule enabled
         await NotificationService.cancelAllNotifications();
 
@@ -99,21 +67,31 @@ export default function AlarmsScreen() {
             <Switch
                 trackColor={{ false: '#e2e8f0', true: colors.primary.light }}
                 thumbColor={item.enabled ? colors.primary.main : '#f4f3f4'}
-                onValueChange={(val) => toggleAlarmCorrected(item.id, val)}
+                onValueChange={(val) => toggleAlarm(item.id, val)}
                 value={item.enabled}
             />
         </View>
     );
 
+    const router = useRouter();
+
     return (
-        <View style={styles.container}>
-            <Stack.Screen options={{ title: 'Prayer Alarms', headerBackTitle: 'Settings' }} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
-                <Ionicons name="notifications" size={48} color={colors.primary.main} />
-                <Text style={styles.headerTitle}>Daily Prayer Reminders</Text>
-                <Text style={styles.headerSubtitle}>
-                    Get notified for the 7 canonical hours of prayer.
-                </Text>
+                <View style={styles.headerTop}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color={colors.primary.main} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Prayer Alarms</Text>
+                    <View style={{ width: 40 }} />
+                </View>
+                <View style={styles.headerContent}>
+                    <Ionicons name="notifications" size={48} color={colors.primary.main} />
+                    <Text style={styles.headerSubtitle}>
+                        Get notified for the 7 canonical hours of prayer.
+                    </Text>
+                </View>
             </View>
             <FlatList
                 data={alarms}
@@ -121,7 +99,7 @@ export default function AlarmsScreen() {
                 keyExtractor={item => item.id}
                 contentContainerStyle={styles.list}
             />
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -131,23 +109,36 @@ const styles = StyleSheet.create({
         backgroundColor: '#f8fafc',
     },
     header: {
-        alignItems: 'center',
-        padding: 24,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#f1f5f9',
+        paddingBottom: 24,
+    },
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 16,
+    },
+    backButton: {
+        padding: 8,
+    },
+    headerContent: {
+        alignItems: 'center',
+        marginTop: 16,
+        paddingHorizontal: 24,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
         color: '#1e293b',
-        marginTop: 12,
     },
     headerSubtitle: {
         fontSize: 14,
         color: '#64748b',
         textAlign: 'center',
-        marginTop: 4,
+        marginTop: 8,
     },
     list: {
         padding: 16,

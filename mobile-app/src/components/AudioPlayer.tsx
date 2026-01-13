@@ -1,6 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Audio } from 'expo-av';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    StyleSheet,
+    ActivityIndicator,
+    Platform,
+    Animated,
+    LayoutAnimation,
+} from 'react-native';
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { colors } from '../config/colors';
@@ -8,235 +17,412 @@ import { colors } from '../config/colors';
 interface AudioPlayerProps {
     uri: string;
     title?: string;
+    autoPlay?: boolean;
 }
 
-export function AudioPlayer({ uri, title }: AudioPlayerProps) {
+const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+export function AudioPlayer({ uri, title, autoPlay = false }: AudioPlayerProps) {
     const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
+    const [status, setStatus] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [duration, setDuration] = useState<number>(0);
-    const [position, setPosition] = useState<number>(0);
-    const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-    const [isSeeking, setIsSeeking] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [volume, setVolume] = useState(1.0);
+    const [isMuted, setIsMuted] = useState(false);
+    const [rate, setRate] = useState(1.0);
     const [isLooping, setIsLooping] = useState(false);
 
-    useEffect(() => {
-        return () => {
-            sound?.unloadAsync();
-        };
-    }, [sound]);
+    // Animation for expanding advanced controls
+    const expandAnim = useRef(new Animated.Value(0)).current;
 
-    const loadSound = async () => {
-        setIsLoading(true);
+    useEffect(() => {
+        setupAudio();
+        return () => {
+            if (sound) {
+                sound.unloadAsync();
+            }
+        };
+    }, []);
+
+    const setupAudio = async () => {
         try {
-            console.log('Loading Sound', uri);
             await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+                interruptionModeIOS: InterruptionModeIOS.DoNotMix,
                 playsInSilentModeIOS: true,
+                shouldDuckAndroid: true,
+                interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
                 staysActiveInBackground: true,
             });
+        } catch (e) {
+            console.error("Error setting audio mode", e);
+        }
+    };
 
-            const { sound: newSound, status } = await Audio.Sound.createAsync(
+    const loadSound = async () => {
+        if (isLoading) return;
+        setIsLoading(true);
+        try {
+            const { sound: newSound } = await Audio.Sound.createAsync(
                 { uri },
-                { shouldPlay: true },
+                { shouldPlay: autoPlay, rate, volume, isLooping, isMuted },
                 onPlaybackStatusUpdate
             );
-
             setSound(newSound);
-            setIsPlaying(true);
-            setIsLoading(false);
         } catch (error) {
-            console.error('Error loading audio:', error);
+            console.error('Error loading sound', error);
+        } finally {
             setIsLoading(false);
+        }
+    };
+
+    const onPlaybackStatusUpdate = (newStatus: any) => {
+        setStatus(newStatus);
+        if (newStatus.didJustFinish && !newStatus.isLooping) {
+            // Handle completion if needed
         }
     };
 
     const handlePlayPause = async () => {
-        if (sound) {
-            if (isPlaying) {
-                await sound.pauseAsync();
-            } else {
-                await sound.playAsync();
-            }
-        } else {
+        if (!sound) {
             await loadSound();
+            return;
         }
-    };
 
-    const onPlaybackStatusUpdate = (status: any) => {
-        if (status.isLoaded) {
-            setDuration(status.durationMillis);
-            if (!isSeeking) {
-                setPosition(status.positionMillis);
-            }
-            setIsPlaying(status.isPlaying);
-            setIsLooping(status.isLooping);
-            if (status.didJustFinish && !status.isLooping) {
-                setIsPlaying(false);
-                setPosition(0);
-                sound?.setPositionAsync(0);
-            }
-        } else if (status.error) {
-            console.error(`Player Error: ${status.error}`);
+        if (status?.isPlaying) {
+            await sound.pauseAsync();
+        } else {
+            await sound.playAsync();
         }
     };
 
     const handleSeek = async (value: number) => {
-        if (sound) {
+        if (sound && status?.isLoaded) {
             await sound.setPositionAsync(value);
-            setPosition(value);
-        }
-        setIsSeeking(false);
-    };
-
-    const handleSkip = async (seconds: number) => {
-        if (sound) {
-            const newPosition = position + (seconds * 1000);
-            await sound.setPositionAsync(Math.max(0, Math.min(newPosition, duration)));
         }
     };
 
-    const toggleSpeed = async () => {
+    const handleVolumeChange = async (value: number) => {
+        setVolume(value);
         if (sound) {
-            const speeds = [1.0, 1.25, 1.5, 2.0];
-            const currentIndex = speeds.indexOf(playbackSpeed);
-            const nextSpeed = speeds[(currentIndex + 1) % speeds.length];
-            await sound.setRateAsync(nextSpeed, true);
-            setPlaybackSpeed(nextSpeed);
+            await sound.setVolumeAsync(value);
+        }
+        if (value > 0 && isMuted) {
+            setIsMuted(false);
+            if (sound) await sound.setIsMutedAsync(false);
+        }
+    };
+
+    const toggleMute = async () => {
+        const newMute = !isMuted;
+        setIsMuted(newMute);
+        if (sound) {
+            await sound.setIsMutedAsync(newMute);
+        }
+    };
+
+    const changeRate = async (newRate: number) => {
+        setRate(newRate);
+        if (sound) {
+            await sound.setRateAsync(newRate, true);
         }
     };
 
     const toggleLoop = async () => {
+        const newLoop = !isLooping;
+        setIsLooping(newLoop);
         if (sound) {
-            const newLoop = !isLooping;
             await sound.setIsLoopingAsync(newLoop);
-            setIsLooping(newLoop);
         }
     };
 
-    const formatTime = (millis: number) => {
+    const toggleExpand = () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setIsExpanded(!isExpanded);
+        Animated.timing(expandAnim, {
+            toValue: isExpanded ? 0 : 1,
+            duration: 300,
+            useNativeDriver: false,
+        }).start();
+    };
+
+    const formatTime = (millis: number | undefined) => {
+        if (millis === undefined || millis === null) return '0:00';
         const totalSeconds = Math.floor(millis / 1000);
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
         return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     };
 
-    return (
-        <View style={styles.container}>
-            {title && <Text style={styles.title}>{title}</Text>}
+    const position = status?.positionMillis || 0;
+    const duration = status?.durationMillis || 0;
+    const isPlaying = status?.isPlaying || false;
 
+    return (
+        <View style={[styles.container, isExpanded && styles.containerExpanded]}>
+            {/* Main Header / Info */}
+            <View style={styles.headerRow}>
+                <View style={styles.infoContainer}>
+                    {title && <Text style={styles.title} numberOfLines={1}>{title}</Text>}
+                    <Text style={styles.timeText}>
+                        {formatTime(position)} / {formatTime(duration)}
+                    </Text>
+                </View>
+                <TouchableOpacity onPress={toggleExpand} style={styles.expandButton}>
+                    <Ionicons
+                        name={isExpanded ? "chevron-up" : "options-outline"}
+                        size={20}
+                        color={colors.neutral.gray[500]}
+                    />
+                </TouchableOpacity>
+            </View>
+
+            {/* Main Controls Row */}
             <View style={styles.controlsRow}>
-                {/* Play/Pause Button */}
                 <TouchableOpacity
-                    style={styles.playButton}
+                    onPress={() => handleSeek(Math.max(0, position - 10000))}
+                    style={styles.secondaryControl}
+                >
+                    <Ionicons name="play-back" size={24} color={colors.primary.main} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
                     onPress={handlePlayPause}
+                    style={styles.playButton}
                     disabled={isLoading}
                 >
                     {isLoading ? (
-                        <ActivityIndicator color="#fff" size="small" />
+                        <ActivityIndicator color="#fff" />
                     ) : (
                         <Ionicons
                             name={isPlaying ? "pause" : "play"}
-                            size={24}
+                            size={32}
                             color="#fff"
-                            style={{ marginLeft: isPlaying ? 0 : 2 }}
+                            style={!isPlaying && { marginLeft: 4 }}
                         />
                     )}
                 </TouchableOpacity>
 
-                {/* Progress Slider */}
-                <View style={styles.sliderContainer}>
-                    <Slider
-                        style={{ width: '100%', height: 40 }}
-                        minimumValue={0}
-                        maximumValue={duration}
-                        value={position}
-                        minimumTrackTintColor={colors.primary.main}
-                        maximumTrackTintColor="#cbd5e1"
-                        thumbTintColor={colors.primary.main}
-                        onSlidingStart={() => setIsSeeking(true)}
-                        onSlidingComplete={handleSeek}
-                        onValueChange={(val) => setPosition(val)}
-                        disabled={!sound}
-                    />
-                    <View style={styles.timeRow}>
-                        <Text style={styles.timeText}>{formatTime(position)}</Text>
-                        <Text style={styles.timeText}>{formatTime(duration)}</Text>
+                <TouchableOpacity
+                    onPress={() => handleSeek(Math.min(duration, position + 10000))}
+                    style={styles.secondaryControl}
+                >
+                    <Ionicons name="play-forward" size={24} color={colors.primary.main} />
+                </TouchableOpacity>
+            </View>
+
+            {/* Seek Bar */}
+            <View style={styles.sliderContainer}>
+                <Slider
+                    style={styles.slider}
+                    minimumValue={0}
+                    maximumValue={duration || 1}
+                    value={position}
+                    onSlidingComplete={handleSeek}
+                    minimumTrackTintColor={colors.primary.main}
+                    maximumTrackTintColor={colors.neutral.gray[300]}
+                    thumbTintColor={colors.primary.main}
+                />
+            </View>
+
+            {/* Advanced Controls (Expandable) */}
+            {isExpanded && (
+                <View style={styles.advancedContainer}>
+                    <View style={styles.divider} />
+
+                    {/* Volume Row */}
+                    <View style={styles.advancedRow}>
+                        <TouchableOpacity onPress={toggleMute}>
+                            <Ionicons
+                                name={isMuted || volume === 0 ? "volume-mute" : volume < 0.5 ? "volume-low" : "volume-high"}
+                                size={20}
+                                color={colors.neutral.gray[600]}
+                            />
+                        </TouchableOpacity>
+                        <Slider
+                            style={styles.volumeSlider}
+                            minimumValue={0}
+                            maximumValue={1}
+                            value={volume}
+                            onValueChange={handleVolumeChange}
+                            minimumTrackTintColor={colors.primary.main}
+                            maximumTrackTintColor={colors.neutral.gray[300]}
+                            thumbTintColor={colors.primary.main}
+                        />
+                    </View>
+
+                    {/* Speed & Loop Row */}
+                    <View style={styles.advancedRow}>
+                        <View style={styles.speedContainer}>
+                            <Text style={styles.label}>Speed</Text>
+                            <View style={styles.speedOptions}>
+                                {SPEEDS.map((s) => (
+                                    <TouchableOpacity
+                                        key={s}
+                                        onPress={() => changeRate(s)}
+                                        style={[styles.speedBadge, rate === s && styles.speedBadgeActive]}
+                                    >
+                                        <Text style={[styles.speedText, rate === s && styles.speedTextActive]}>
+                                            {s}x
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={toggleLoop}
+                            style={[styles.loopButton, isLooping && styles.loopButtonActive]}
+                        >
+                            <Ionicons
+                                name="repeat"
+                                size={20}
+                                color={isLooping ? "#fff" : colors.neutral.gray[600]}
+                            />
+                        </TouchableOpacity>
                     </View>
                 </View>
-            </View>
-
-            {/* Sub Controls: Skip & Speed */}
-            <View style={styles.subControls}>
-                <TouchableOpacity onPress={() => handleSkip(-10)} disabled={!sound} style={styles.iconBtn}>
-                    <Ionicons name="arrow-undo-outline" size={22} color={colors.primary.main} />
-                    <Text style={styles.iconBtnText}>-10s</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={toggleSpeed} disabled={!sound} style={styles.speedBtn}>
-                    <Text style={styles.speedText}>{playbackSpeed}x</Text>
-                </TouchableOpacity>
-
-                {/* Repeat Button */}
-                <TouchableOpacity onPress={toggleLoop} disabled={!sound} style={[styles.iconBtn, isLooping && styles.activeBtn]}>
-                    <Ionicons name="repeat" size={22} color={isLooping ? colors.primary.main : '#94a3b8'} />
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => handleSkip(10)} disabled={!sound} style={styles.iconBtn}>
-                    <Text style={styles.iconBtnText}>+10s</Text>
-                    <Ionicons name="arrow-redo-outline" size={22} color={colors.primary.main} />
-                </TouchableOpacity>
-            </View>
+            )}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#f8fafc',
+        backgroundColor: '#fff',
         borderRadius: 16,
         padding: 16,
-        gap: 12,
-        marginVertical: 8,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
+        marginVertical: 10,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
+    containerExpanded: {
+        // Optional extra styling when expanded
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    infoContainer: {
+        flex: 1,
     },
     title: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#334155',
-        marginBottom: 4,
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.neutral.gray[800],
+        marginBottom: 2,
+    },
+    timeText: {
+        fontSize: 12,
+        color: colors.neutral.gray[500],
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    expandButton: {
+        padding: 4,
     },
     controlsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
+        justifyContent: 'center',
+        gap: 24,
+        marginBottom: 8,
     },
     playButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         backgroundColor: colors.primary.main,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowColor: colors.primary.main,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    secondaryControl: {
+        padding: 8,
     },
     sliderContainer: {
+        width: '100%',
+        height: 40,
+        justifyContent: 'center',
+    },
+    slider: {
+        width: '100%',
+        height: 40,
+    },
+    advancedContainer: {
+        marginTop: 8,
+        gap: 16,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: colors.neutral.gray[100],
+        width: '100%',
+    },
+    advancedRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    volumeSlider: {
+        flex: 1,
+        height: 40,
+    },
+    speedContainer: {
         flex: 1,
     },
-    timeRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 4,
-        marginTop: -8, // Pull time closer to slider
-    },
-    timeText: {
+    label: {
         fontSize: 12,
-        color: '#64748b',
-        fontVariant: ['tabular-nums'],
+        fontWeight: '600',
+        color: colors.neutral.gray[500],
+        marginBottom: 4,
+    },
+    speedOptions: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 4,
+    },
+    speedBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        backgroundColor: colors.neutral.gray[100],
+    },
+    speedBadgeActive: {
+        backgroundColor: colors.primary.main,
+    },
+    speedText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: colors.neutral.gray[600],
+    },
+    speedTextActive: {
+        color: '#fff',
+    },
+    loopButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: colors.neutral.gray[100],
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'flex-end',
+    },
+    loopButtonActive: {
+        backgroundColor: colors.primary.main,
     },
     subControls: {
         flexDirection: 'row',
@@ -267,10 +453,5 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 6,
-    },
-    speedText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#475569',
     },
 });

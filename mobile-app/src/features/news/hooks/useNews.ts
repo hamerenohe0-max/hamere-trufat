@@ -20,20 +20,28 @@ export const useReactToNews = (id: string) => {
     mutationFn: (reaction: 'like' | 'dislike') =>
       newsApi.react(id, reaction),
     onSuccess: (data) => {
-      // Update the cache optimistically
-      queryClient.setQueryData(['news', id], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          reactions: {
-            likes: data.likes,
-            dislikes: data.dislikes,
-            userReaction: data.userReaction,
-          },
-        };
-      });
-      queryClient.invalidateQueries({ queryKey: ['news', id] });
-      queryClient.invalidateQueries({ queryKey: ['news'] });
+      try {
+        // Update the cache optimistically
+        queryClient.setQueryData(['news', id], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            reactions: {
+              likes: data?.likes ?? old.reactions?.likes ?? 0,
+              dislikes: data?.dislikes ?? old.reactions?.dislikes ?? 0,
+              userReaction: data?.userReaction ?? null,
+            },
+          };
+        });
+      } catch (error) {
+        console.error('Error updating reaction cache:', error);
+      } finally {
+        queryClient.invalidateQueries({ queryKey: ['news', id] });
+        queryClient.invalidateQueries({ queryKey: ['news'] });
+      }
+    },
+    onError: (error) => {
+      console.error('Error reacting to news:', error);
     },
   });
 };

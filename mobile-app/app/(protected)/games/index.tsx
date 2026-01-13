@@ -7,30 +7,93 @@ const GAMES = [
   {
     id: 'trivia',
     title: 'Bible Trivia',
-    description: 'Test your knowledge of the Bible and Orthodox teachings',
+    description: 'Test your knowledge',
     icon: '📖',
     route: '/(protected)/games/trivia',
   },
   {
-    id: 'puzzle',
-    title: 'Spiritual Puzzles',
-    description: 'Solve word puzzles and biblical challenges',
+    id: 'who-said-it',
+    title: 'Who Said It?',
+    description: 'Guess the speaker',
+    icon: '🗣️',
+    route: '/(protected)/games/who-said-it',
+  },
+  {
+    id: 'scramble',
+    title: 'Scripture Scramble',
+    description: 'Unscramble verses',
     icon: '🧩',
+    route: '/(protected)/games/scramble',
+  },
+  {
+    id: 'parable',
+    title: 'Name That Parable',
+    description: 'Identify the story',
+    icon: '🌾',
+    route: '/(protected)/games/parable',
+  },
+  {
+    id: 'memory',
+    title: 'Memory Match',
+    description: 'Match symbols',
+    icon: '🧠',
+    route: '/(protected)/games/memory',
+  },
+  {
+    id: 'bingo',
+    title: 'Faith Bingo',
+    description: 'Spiritual bingo',
+    icon: '🎯',
+    route: '/(protected)/games/bingo',
+  },
+  {
+    id: 'journey',
+    title: 'Bible Journey',
+    description: 'Through major events',
+    icon: '🗺️',
+    route: '/(protected)/games/journey',
+  },
+  {
+    id: 'virtue',
+    title: 'Virtue Quest',
+    description: 'Christian challenges',
+    icon: '🤝',
+    route: '/(protected)/games/virtue',
+  },
+  {
+    id: 'history',
+    title: 'Church History',
+    description: 'Saints and councils',
+    icon: '🏛️',
+    route: '/(protected)/games/history',
+  },
+  {
+    id: 'matchup',
+    title: 'Prayer Match',
+    description: 'Link prayers',
+    icon: '🙏',
+    route: '/(protected)/games/matchup',
+  },
+  {
+    id: 'charades',
+    title: 'Bible Charades',
+    description: 'Act out stories',
+    icon: '🎭',
+    route: '/(protected)/games/charades',
+  },
+  {
+    id: 'puzzle',
+    title: 'Word Puzzles',
+    description: 'Biblical challenges',
+    icon: '🔠',
     route: '/(protected)/games/puzzle',
   },
   {
     id: 'saint',
     title: 'Guess the Saint',
-    description: 'Identify saints from clues and images',
+    description: 'Identify clues',
     icon: '👼',
     route: '/(protected)/games/saint',
-  },
-  {
-    id: 'memory',
-    title: 'Memory Match',
-    description: 'Match pairs of biblical symbols and teachings',
-    icon: '🧠',
-    route: '/(protected)/games/memory',
   },
 ];
 
@@ -40,73 +103,73 @@ export default function GamesListScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>Games</Text>
-      <Text style={styles.subtitle}>
-        Test your knowledge and have fun with spiritual games.
-      </Text>
+        <Text style={styles.heading}>Games</Text>
+        <Text style={styles.subtitle}>
+          Test your knowledge and have fun with spiritual games.
+        </Text>
 
-      <View style={styles.gamesGrid}>
-        {GAMES.map((game) => {
-          try {
-            const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
-            const topScore = scores && scores.length > 0 ? scores[0] : null;
-            return (
-              <Link key={game.id} href={game.route as any} asChild>
-                <TouchableOpacity style={styles.gameCard}>
-                  <Text style={styles.gameIcon}>{game.icon}</Text>
-                  <Text style={styles.gameTitle}>{game.title}</Text>
-                  <Text style={styles.gameDescription}>{game.description}</Text>
-                  {topScore && (
-                    <Text style={styles.highScore}>
-                      Best: {topScore.score} points
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </Link>
-            );
-          } catch (error) {
-            console.error('Error loading game scores:', error);
-            return (
-              <Link key={game.id} href={game.route as any} asChild>
-                <TouchableOpacity style={styles.gameCard}>
-                  <Text style={styles.gameIcon}>{game.icon}</Text>
-                  <Text style={styles.gameTitle}>{game.title}</Text>
-                  <Text style={styles.gameDescription}>{game.description}</Text>
-                </TouchableOpacity>
-              </Link>
-            );
-          }
-        })}
-      </View>
+        <View style={styles.gamesGrid}>
+          {GAMES.map((game) => {
+            try {
+              const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
+              const topScore = scores && scores.length > 0 ? scores[0] : null;
+              return (
+                <Link key={game.id} href={game.route as any} asChild>
+                  <TouchableOpacity style={styles.gameCard}>
+                    <Text style={styles.gameIcon}>{game.icon}</Text>
+                    <Text style={styles.gameTitle}>{game.title}</Text>
+                    <Text style={styles.gameDescription}>{game.description}</Text>
+                    {topScore && (
+                      <Text style={styles.highScore}>
+                        Best: {topScore.score} points
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </Link>
+              );
+            } catch (error) {
+              console.error('Error loading game scores:', error);
+              return (
+                <Link key={game.id} href={game.route as any} asChild>
+                  <TouchableOpacity style={styles.gameCard}>
+                    <Text style={styles.gameIcon}>{game.icon}</Text>
+                    <Text style={styles.gameTitle}>{game.title}</Text>
+                    <Text style={styles.gameDescription}>{game.description}</Text>
+                  </TouchableOpacity>
+                </Link>
+              );
+            }
+          })}
+        </View>
 
-      <View style={styles.leaderboardSection}>
-        <Text style={styles.sectionTitle}>Your Top Scores</Text>
-        {GAMES.map((game) => {
-          try {
-            const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
-            if (!scores || scores.length === 0) return null;
-            return (
-              <View key={game.id} style={styles.scoreRow}>
-                <Text style={styles.scoreGame}>{game.title}</Text>
-                <Text style={styles.scoreValue}>{scores[0].score} pts</Text>
-              </View>
-            );
-          } catch (error) {
-            console.error('Error loading scores for game:', game.id, error);
-            return null;
-          }
-        })}
-        {GAMES.every((game) => {
-          try {
-            const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
-            return !scores || scores.length === 0;
-          } catch {
-            return true;
-          }
-        }) && (
-          <Text style={styles.emptyScores}>No scores yet. Play a game to get started!</Text>
-        )}
-      </View>
+        <View style={styles.leaderboardSection}>
+          <Text style={styles.sectionTitle}>Your Top Scores</Text>
+          {GAMES.map((game) => {
+            try {
+              const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
+              if (!scores || scores.length === 0) return null;
+              return (
+                <View key={game.id} style={styles.scoreRow}>
+                  <Text style={styles.scoreGame}>{game.title}</Text>
+                  <Text style={styles.scoreValue}>{scores[0].score} pts</Text>
+                </View>
+              );
+            } catch (error) {
+              console.error('Error loading scores for game:', game.id, error);
+              return null;
+            }
+          })}
+          {GAMES.every((game) => {
+            try {
+              const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
+              return !scores || scores.length === 0;
+            } catch {
+              return true;
+            }
+          }) && (
+              <Text style={styles.emptyScores}>No scores yet. Play a game to get started!</Text>
+            )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -166,7 +229,7 @@ const styles = StyleSheet.create({
   },
   highScore: {
     fontSize: 11,
-    color: '#2563eb',
+    color: '#9D6531', // Secondary
     fontWeight: '600',
     marginTop: 4,
   },
@@ -196,7 +259,7 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2563eb',
+    color: '#9D6531', // Secondary
   },
   emptyScores: {
     textAlign: 'center',

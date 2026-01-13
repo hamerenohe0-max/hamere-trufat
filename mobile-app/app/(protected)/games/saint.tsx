@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -9,77 +10,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGameStore } from '../../../src/features/games/state/useGameStore';
+import { SAINT_QUESTIONS, SAINT_OPTIONS } from '../../../src/features/games/data/games_data';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
-// Mock saint questions
-const SAINT_QUESTIONS = [
-  {
-    id: '1',
-    name: 'Saint Peter',
-    clues: [
-      'One of the twelve apostles',
-      'Known as the "Rock"',
-      'Denied Jesus three times',
-      'First Pope of the Church',
-    ],
-    image: 'https://via.placeholder.com/200?text=Saint+Peter',
-  },
-  {
-    id: '2',
-    name: 'Saint Paul',
-    clues: [
-      'Formerly known as Saul',
-      'Wrote many epistles',
-      'Was a persecutor of Christians',
-      'Had a vision on the road to Damascus',
-    ],
-    image: 'https://via.placeholder.com/200?text=Saint+Paul',
-  },
-  {
-    id: '3',
-    name: 'Saint Mary',
-    clues: [
-      'Mother of Jesus',
-      'Known as the Theotokos',
-      'Visited by the Archangel Gabriel',
-      'Present at the Crucifixion',
-    ],
-    image: 'https://via.placeholder.com/200?text=Saint+Mary',
-  },
-  {
-    id: '4',
-    name: 'Saint George',
-    clues: [
-      'Patron saint of many countries',
-      'Known for slaying a dragon',
-      'Martyred for his faith',
-      'Feast day is April 23',
-    ],
-    image: 'https://via.placeholder.com/200?text=Saint+George',
-  },
-  {
-    id: '5',
-    name: 'Saint Mark',
-    clues: [
-      'Wrote one of the four Gospels',
-      'Founded the Church in Alexandria',
-      'Symbol is a lion',
-      'Companion of Saint Peter',
-    ],
-    image: 'https://via.placeholder.com/200?text=Saint+Mark',
-  },
-];
 
-const OPTIONS = [
-  'Saint Peter',
-  'Saint Paul',
-  'Saint Mary',
-  'Saint George',
-  'Saint Mark',
-  'Saint John',
-  'Saint Luke',
-  'Saint Matthew',
-];
+const MAX_QUESTIONS = 4;
 
 export default function GuessTheSaintScreen() {
   const router = useRouter();
@@ -89,9 +26,26 @@ export default function GuessTheSaintScreen() {
   const [revealedClues, setRevealedClues] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [gameOver, setGameOver] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const { colors, fontScale, isDark } = useTheme();
 
   const question = SAINT_QUESTIONS[currentQuestion];
   const visibleClues = question.clues.slice(0, revealedClues + 1);
+
+  // Generate 4 randomized options (correct answer + 3 random others)
+  const [options, setOptions] = useState<string[]>([]);
+
+  useState(() => {
+    generateOptions();
+  });
+
+  function generateOptions() {
+    const currentQuestionData = SAINT_QUESTIONS[currentQuestion];
+    const otherOptions = SAINT_OPTIONS.filter(opt => opt !== currentQuestionData.name);
+    const shuffledOthers = otherOptions.sort(() => 0.5 - Math.random()).slice(0, 3);
+    const finalOptions = [currentQuestionData.name, ...shuffledOthers].sort(() => 0.5 - Math.random());
+    setOptions(finalOptions);
+  }
 
   function handleGuess(saintName: string) {
     setSelectedAnswer(saintName);
@@ -101,10 +55,19 @@ export default function GuessTheSaintScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       setTimeout(() => {
-        if (currentQuestion < SAINT_QUESTIONS.length - 1) {
-          setCurrentQuestion(currentQuestion + 1);
+        if (currentQuestion < MAX_QUESTIONS - 1) {
+          const nextIndex = (currentQuestion + 1) % SAINT_QUESTIONS.length;
+          setCurrentQuestion(nextIndex);
           setRevealedClues(0);
           setSelectedAnswer(null);
+          setImageLoading(true);
+
+          // Generate new options for next question
+          const nextQuestionData = SAINT_QUESTIONS[nextIndex];
+          const otherOptions = SAINT_OPTIONS.filter(opt => opt !== nextQuestionData.name);
+          const shuffledOthers = otherOptions.sort(() => 0.5 - Math.random()).slice(0, 3);
+          const finalOptions = [nextQuestionData.name, ...shuffledOthers].sort(() => 0.5 - Math.random());
+          setOptions(finalOptions);
         } else {
           setGameOver(true);
           const points = 20 - revealedClues * 5;
@@ -134,25 +97,27 @@ export default function GuessTheSaintScreen() {
     setRevealedClues(0);
     setSelectedAnswer(null);
     setGameOver(false);
+    setImageLoading(true);
+    generateOptions();
   }
 
   if (gameOver) {
     return (
-      <View style={styles.container}>
-        <View style={styles.gameOverCard}>
-          <Text style={styles.gameOverTitle}>Game Complete! 🎉</Text>
-          <Text style={styles.finalScore}>Final Score: {score}</Text>
+      <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={[styles.gameOverCard, { backgroundColor: colors.background.secondary }]}>
+          <ThemedText style={styles.gameOverTitle}>Game Complete! 🎉</ThemedText>
+          <ThemedText style={styles.finalScore}>Final Score: {score}</ThemedText>
           <View style={styles.gameOverActions}>
-            <TouchableOpacity style={styles.button} onPress={resetGame}>
-              <Text style={styles.buttonText}>Play Again</Text>
+            <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary.main }]} onPress={resetGame}>
+              <ThemedText style={styles.buttonText}>Play Again</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.button, styles.buttonOutline]}
+              style={[styles.button, styles.buttonOutline, { borderColor: colors.primary.main }]}
               onPress={() => router.back()}
             >
-              <Text style={[styles.buttonText, styles.buttonTextOutline]}>
+              <ThemedText style={[styles.buttonText, styles.buttonTextOutline, { color: colors.primary.main }]}>
                 Back to Games
-              </Text>
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -161,41 +126,55 @@ export default function GuessTheSaintScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background.primary }]}>
       <View style={styles.header}>
-        <Text style={styles.score}>Score: {score}</Text>
-        <Text style={styles.progress}>
-          Question {currentQuestion + 1} of {SAINT_QUESTIONS.length}
-        </Text>
+        <ThemedText style={[styles.score, { color: colors.primary.main }]}>Score: {score}</ThemedText>
+        <ThemedText style={styles.progress}>
+          Question {currentQuestion + 1} of {MAX_QUESTIONS}
+        </ThemedText>
       </View>
 
       <View style={styles.questionCard}>
-        <Image source={{ uri: question.image }} style={styles.saintImage} />
-        <Text style={styles.questionTitle}>Who is this saint?</Text>
+        <View style={[styles.imageContainer, { backgroundColor: colors.background.tertiary }]}>
+          <Image
+            source={{ uri: question.image }}
+            style={styles.saintImage}
+            onLoadStart={() => setImageLoading(true)}
+            onLoadEnd={() => setImageLoading(false)}
+            resizeMode="cover"
+            key={question.image}
+          />
+          {imageLoading && (
+            <View style={[styles.loaderOverlay, { backgroundColor: colors.background.tertiary }]}>
+              <ActivityIndicator size="large" color={colors.primary.main} />
+            </View>
+          )}
+        </View>
+        <ThemedText style={styles.questionTitle}>Who is this saint?</ThemedText>
 
         <View style={styles.cluesSection}>
-          <Text style={styles.cluesTitle}>Clues:</Text>
+          <ThemedText style={styles.cluesTitle}>Clues:</ThemedText>
           {visibleClues.map((clue, index) => (
             <View key={index} style={styles.clueItem}>
-              <Text style={styles.clueBullet}>•</Text>
-              <Text style={styles.clueText}>{clue}</Text>
+              <ThemedText style={[styles.clueBullet, { color: colors.primary.main }]}>•</ThemedText>
+              <ThemedText style={styles.clueText}>{clue}</ThemedText>
             </View>
           ))}
           {revealedClues < question.clues.length - 1 && (
             <TouchableOpacity
-              style={styles.revealButton}
+              style={[styles.revealButton, { backgroundColor: isDark ? colors.primary.dark + '40' : '#fef3c7' }]}
               onPress={revealNextClue}
               disabled={selectedAnswer !== null}
             >
-              <Text style={styles.revealButtonText}>
+              <ThemedText style={[styles.revealButtonText, { color: isDark ? colors.primary.light : '#92400e' }]}>
                 Reveal Next Clue (-5 points)
-              </Text>
+              </ThemedText>
             </TouchableOpacity>
           )}
         </View>
 
         <View style={styles.options}>
-          {OPTIONS.map((option) => {
+          {options.map((option) => {
             const isSelected = selectedAnswer === option;
             const isCorrect = option === question.name;
 
@@ -204,21 +183,22 @@ export default function GuessTheSaintScreen() {
                 key={option}
                 style={[
                   styles.option,
-                  isSelected && isCorrect && styles.optionCorrect,
-                  isSelected && !isCorrect && styles.optionWrong,
+                  { backgroundColor: colors.background.secondary },
+                  isSelected && isCorrect && [styles.optionCorrect, { borderColor: colors.success }],
+                  isSelected && !isCorrect && [styles.optionWrong, { borderColor: colors.error }],
                 ]}
                 onPress={() => handleGuess(option)}
                 disabled={selectedAnswer !== null}
               >
-                <Text
+                <ThemedText
                   style={[
                     styles.optionText,
-                    isSelected && isCorrect && styles.optionTextCorrect,
-                    isSelected && !isCorrect && styles.optionTextWrong,
+                    isSelected && isCorrect && [styles.optionTextCorrect, { color: colors.success }],
+                    isSelected && !isCorrect && [styles.optionTextWrong, { color: colors.error }],
                   ]}
                 >
                   {option}
-                </Text>
+                </ThemedText>
               </TouchableOpacity>
             );
           })}
@@ -230,9 +210,8 @@ export default function GuessTheSaintScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 24,
-    backgroundColor: '#f8fafc',
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
@@ -243,29 +222,40 @@ const styles = StyleSheet.create({
   score: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2563eb',
   },
   progress: {
     fontSize: 14,
-    color: '#64748b',
   },
   questionCard: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
     gap: 20,
     alignItems: 'center',
   },
   saintImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  imageContainer: {
     width: 200,
     height: 200,
     borderRadius: 16,
     backgroundColor: '#f1f5f9',
+    overflow: 'hidden',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   questionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#0f172a',
   },
   cluesSection: {
     width: '100%',
@@ -274,7 +264,6 @@ const styles = StyleSheet.create({
   cluesTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0f172a',
   },
   clueItem: {
     flexDirection: 'row',
@@ -283,24 +272,20 @@ const styles = StyleSheet.create({
   },
   clueBullet: {
     fontSize: 18,
-    color: '#2563eb',
     fontWeight: '600',
   },
   clueText: {
     flex: 1,
     fontSize: 14,
-    color: '#475569',
     lineHeight: 20,
   },
   revealButton: {
-    backgroundColor: '#fef3c7',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
     marginTop: 8,
   },
   revealButtonText: {
-    color: '#92400e',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -310,23 +295,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   option: {
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   optionCorrect: {
-    borderColor: '#10b981',
-    backgroundColor: '#d1fae5',
+    backgroundColor: '#d1fae520',
   },
   optionWrong: {
-    borderColor: '#ef4444',
-    backgroundColor: '#fee2e2',
+    backgroundColor: '#fee2e220',
   },
   optionText: {
     fontSize: 16,
-    color: '#1f2937',
     textAlign: 'center',
   },
   optionTextCorrect: {
@@ -338,7 +319,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   gameOverCard: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
@@ -348,12 +328,10 @@ const styles = StyleSheet.create({
   gameOverTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0f172a',
   },
   finalScore: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#2563eb',
   },
   gameOverActions: {
     flexDirection: 'row',
@@ -374,10 +352,8 @@ const styles = StyleSheet.create({
   buttonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#2563eb',
   },
   buttonTextOutline: {
-    color: '#2563eb',
   },
 });
 
