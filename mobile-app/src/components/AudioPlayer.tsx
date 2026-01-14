@@ -12,6 +12,8 @@ import {
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { useTheme } from './ThemeProvider';
+import { BlurView } from 'expo-blur';
 import { colors } from '../config/colors';
 
 interface AudioPlayerProps {
@@ -31,6 +33,7 @@ export function AudioPlayer({ uri, title, autoPlay = false }: AudioPlayerProps) 
     const [isMuted, setIsMuted] = useState(false);
     const [rate, setRate] = useState(1.0);
     const [isLooping, setIsLooping] = useState(false);
+    const { colors: themeColors, isDark } = useTheme();
 
     // Animation for expanding advanced controls
     const expandAnim = useRef(new Animated.Value(0)).current;
@@ -159,12 +162,32 @@ export function AudioPlayer({ uri, title, autoPlay = false }: AudioPlayerProps) 
     const isPlaying = status?.isPlaying || false;
 
     return (
-        <View style={[styles.container, isExpanded && styles.containerExpanded]}>
+        <View style={[
+            styles.container,
+            isExpanded && styles.containerExpanded,
+            {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.005)' : '#fff',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.05)',
+                borderWidth: isDark ? 0.3 : 1,
+                // Fully removed physical weight for near-total transparency
+                shadowOpacity: 0,
+                elevation: 0,
+            }
+        ]}>
+            {/* Glassmorphic Blur Background */}
+            {isDark && (
+                <BlurView
+                    intensity={Platform.OS === 'ios' ? 10 : 20}
+                    tint="light"
+                    style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}
+                />
+            )}
+
             {/* Main Header / Info */}
             <View style={styles.headerRow}>
                 <View style={styles.infoContainer}>
-                    {title && <Text style={styles.title} numberOfLines={1}>{title}</Text>}
-                    <Text style={styles.timeText}>
+                    {title && <Text style={[styles.title, { color: isDark ? themeColors.text.primary : themeColors.neutral.gray[800] }]} numberOfLines={1}>{title}</Text>}
+                    <Text style={[styles.timeText, { color: isDark ? themeColors.text.secondary : themeColors.neutral.gray[500] }]}>
                         {formatTime(position)} / {formatTime(duration)}
                     </Text>
                 </View>
@@ -172,7 +195,7 @@ export function AudioPlayer({ uri, title, autoPlay = false }: AudioPlayerProps) 
                     <Ionicons
                         name={isExpanded ? "chevron-up" : "options-outline"}
                         size={20}
-                        color={colors.neutral.gray[500]}
+                        color={isDark ? themeColors.secondary.main : themeColors.neutral.gray[500]}
                     />
                 </TouchableOpacity>
             </View>
@@ -183,12 +206,12 @@ export function AudioPlayer({ uri, title, autoPlay = false }: AudioPlayerProps) 
                     onPress={() => handleSeek(Math.max(0, position - 10000))}
                     style={styles.secondaryControl}
                 >
-                    <Ionicons name="play-back" size={24} color={colors.primary.main} />
+                    <Ionicons name="play-back" size={24} color={isDark ? themeColors.secondary.main : themeColors.primary.main} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     onPress={handlePlayPause}
-                    style={styles.playButton}
+                    style={[styles.playButton, { backgroundColor: isDark ? themeColors.secondary.main : themeColors.primary.main }]}
                     disabled={isLoading}
                 >
                     {isLoading ? (
@@ -207,7 +230,7 @@ export function AudioPlayer({ uri, title, autoPlay = false }: AudioPlayerProps) 
                     onPress={() => handleSeek(Math.min(duration, position + 10000))}
                     style={styles.secondaryControl}
                 >
-                    <Ionicons name="play-forward" size={24} color={colors.primary.main} />
+                    <Ionicons name="play-forward" size={24} color={isDark ? themeColors.secondary.main : themeColors.primary.main} />
                 </TouchableOpacity>
             </View>
 
@@ -219,71 +242,83 @@ export function AudioPlayer({ uri, title, autoPlay = false }: AudioPlayerProps) 
                     maximumValue={duration || 1}
                     value={position}
                     onSlidingComplete={handleSeek}
-                    minimumTrackTintColor={colors.primary.main}
-                    maximumTrackTintColor={colors.neutral.gray[300]}
-                    thumbTintColor={colors.primary.main}
+                    minimumTrackTintColor={isDark ? themeColors.secondary.main : themeColors.primary.main}
+                    maximumTrackTintColor={isDark ? 'rgba(255,255,255,0.2)' : themeColors.neutral.gray[300]}
+                    thumbTintColor={isDark ? themeColors.secondary.main : themeColors.primary.main}
                 />
             </View>
 
             {/* Advanced Controls (Expandable) */}
-            {isExpanded && (
-                <View style={styles.advancedContainer}>
-                    <View style={styles.divider} />
+            {
+                isExpanded && (
+                    <View style={styles.advancedContainer}>
+                        <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : themeColors.neutral.gray[100] }]} />
 
-                    {/* Volume Row */}
-                    <View style={styles.advancedRow}>
-                        <TouchableOpacity onPress={toggleMute}>
-                            <Ionicons
-                                name={isMuted || volume === 0 ? "volume-mute" : volume < 0.5 ? "volume-low" : "volume-high"}
-                                size={20}
-                                color={colors.neutral.gray[600]}
+                        {/* Volume Row */}
+                        <View style={styles.advancedRow}>
+                            <TouchableOpacity onPress={toggleMute}>
+                                <Ionicons
+                                    name={isMuted || volume === 0 ? "volume-mute" : volume < 0.5 ? "volume-low" : "volume-high"}
+                                    size={20}
+                                    color={isDark ? themeColors.text.tertiary : themeColors.neutral.gray[600]}
+                                />
+                            </TouchableOpacity>
+                            <Slider
+                                style={styles.volumeSlider}
+                                minimumValue={0}
+                                maximumValue={1}
+                                value={volume}
+                                onValueChange={handleVolumeChange}
+                                minimumTrackTintColor={isDark ? themeColors.secondary.main : themeColors.primary.main}
+                                maximumTrackTintColor={isDark ? 'rgba(255,255,255,0.2)' : themeColors.neutral.gray[300]}
+                                thumbTintColor={isDark ? themeColors.secondary.main : themeColors.primary.main}
                             />
-                        </TouchableOpacity>
-                        <Slider
-                            style={styles.volumeSlider}
-                            minimumValue={0}
-                            maximumValue={1}
-                            value={volume}
-                            onValueChange={handleVolumeChange}
-                            minimumTrackTintColor={colors.primary.main}
-                            maximumTrackTintColor={colors.neutral.gray[300]}
-                            thumbTintColor={colors.primary.main}
-                        />
-                    </View>
-
-                    {/* Speed & Loop Row */}
-                    <View style={styles.advancedRow}>
-                        <View style={styles.speedContainer}>
-                            <Text style={styles.label}>Speed</Text>
-                            <View style={styles.speedOptions}>
-                                {SPEEDS.map((s) => (
-                                    <TouchableOpacity
-                                        key={s}
-                                        onPress={() => changeRate(s)}
-                                        style={[styles.speedBadge, rate === s && styles.speedBadgeActive]}
-                                    >
-                                        <Text style={[styles.speedText, rate === s && styles.speedTextActive]}>
-                                            {s}x
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
                         </View>
 
-                        <TouchableOpacity
-                            onPress={toggleLoop}
-                            style={[styles.loopButton, isLooping && styles.loopButtonActive]}
-                        >
-                            <Ionicons
-                                name="repeat"
-                                size={20}
-                                color={isLooping ? "#fff" : colors.neutral.gray[600]}
-                            />
-                        </TouchableOpacity>
+                        {/* Speed & Loop Row */}
+                        <View style={styles.advancedRow}>
+                            <View style={styles.speedContainer}>
+                                <Text style={[styles.label, { color: isDark ? themeColors.text.tertiary : themeColors.neutral.gray[500] }]}>Speed</Text>
+                                <View style={styles.speedOptions}>
+                                    {SPEEDS.map((s) => (
+                                        <TouchableOpacity
+                                            key={s}
+                                            onPress={() => changeRate(s)}
+                                            style={[
+                                                styles.speedBadge,
+                                                rate === s && styles.speedBadgeActive,
+                                                isDark && rate !== s && { backgroundColor: 'rgba(255,255,255,0.1)' },
+                                                isDark && rate === s && { backgroundColor: themeColors.secondary.main }
+                                            ]}
+                                        >
+                                            <Text style={[styles.speedText, rate === s && styles.speedTextActive, isDark && rate !== s && { color: themeColors.text.secondary }]}>
+                                                {s}x
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={toggleLoop}
+                                style={[
+                                    styles.loopButton,
+                                    isLooping && styles.loopButtonActive,
+                                    isDark && !isLooping && { backgroundColor: 'rgba(255,255,255,0.1)' },
+                                    isDark && isLooping && { backgroundColor: themeColors.secondary.main }
+                                ]}
+                            >
+                                <Ionicons
+                                    name="repeat"
+                                    size={20}
+                                    color={isLooping ? "#fff" : (isDark ? themeColors.text.tertiary : themeColors.neutral.gray[600])}
+                                />
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
-            )}
-        </View>
+                )
+            }
+        </View >
     );
 }
 
