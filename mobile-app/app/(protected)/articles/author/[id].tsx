@@ -7,7 +7,7 @@ import {
   useAuthorProfile,
 } from '../../../../src/features/articles/hooks/useArticles';
 import { PublisherProfile } from '../../../../src/features/articles/components/PublisherProfile';
-import { ArticleCard } from '../../../../src/features/articles/components/ArticleCard';
+import { ArticleCard } from '../../../../src/components/ArticleCard';
 import { useTheme } from '../../../../src/components/ThemeProvider';
 import { ThemedText } from '../../../../src/components/ThemedText';
 import { Link } from 'expo-router';
@@ -323,5 +323,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-

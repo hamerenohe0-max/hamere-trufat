@@ -1,7 +1,7 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNewsList } from '../../../src/features/news/hooks/useNews';
-import { NewsCard } from '../../../src/features/news/components/NewsCard';
+import { NewsCard } from '../../../src/components/NewsCard';
 import { useTheme } from '../../../src/components/ThemeProvider';
 import { ThemedText } from '../../../src/components/ThemedText';
 
@@ -20,7 +20,7 @@ export default function NewsListScreen() {
         {newsQuery.isLoading ? (
           <ActivityIndicator size="large" color={colors.primary.main} />
         ) : (newsQuery.data as any[])?.length ? (
-          (newsQuery.data as any[]).map((item) => <NewsCard key={item.id} item={item} />)
+          (newsQuery.data as any[]).map((item) => <NewsCard key={item.id} news={item} cardWidth="100%" imageHeight={180} />)
         ) : (
           <View style={[styles.empty, { backgroundColor: colors.background.primary }]}>
             <ThemedText style={styles.emptyText}>No news available.</ThemedText>
@@ -37,9 +37,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   container: {
-    padding: 24,
+    padding: 20,
     paddingTop: 16,
-    gap: 16,
+    gap: 20,
     backgroundColor: '#f8fafc',
   },
   heading: {

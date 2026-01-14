@@ -1,7 +1,7 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArticlesList } from '../../../src/features/articles/hooks/useArticles';
-import { ArticleCard } from '../../../src/features/articles/components/ArticleCard';
+import { ArticleCard } from '../../../src/components/ArticleCard';
 import { useTheme } from '../../../src/components/ThemeProvider';
 import { ThemedText } from '../../../src/components/ThemedText';
 
@@ -21,7 +21,7 @@ export default function ArticlesListScreen() {
           <ActivityIndicator size="large" color={colors.primary.main} />
         ) : (
           (articlesQuery.data as any[])?.map((article) => (
-            <ArticleCard key={article.id} article={article} />
+            <ArticleCard key={article.id} article={article} cardWidth="100%" imageHeight={180} />
           ))
         )}
       </ScrollView>
@@ -35,9 +35,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   container: {
-    padding: 24,
+    padding: 20,
     paddingTop: 16,
-    gap: 16,
+    gap: 20,
     backgroundColor: '#f8fafc',
   },
   heading: {

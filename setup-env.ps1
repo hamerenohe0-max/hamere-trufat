@@ -1,14 +1,13 @@
 # Quick Environment Setup Script
 # Creates basic .env files if they don't exist
 
-Write-Host "🔧 Setting up environment files..." -ForegroundColor Cyan
-Write-Host ""
+Write-Host "Setting up environment files..."
 
 # Backend .env
 $backendEnv = "backend\.env"
 if (!(Test-Path $backendEnv)) {
-    Write-Host "Creating backend/.env..." -ForegroundColor Yellow
-    @"
+    Write-Host "Creating $backendEnv..."
+    $backendContent = @"
 MONGODB_URI=mongodb://localhost:27017/hamere-trufat
 JWT_SECRET=dev-secret-key-change-in-production-$(Get-Random)
 JWT_REFRESH_SECRET=dev-refresh-secret-change-in-production-$(Get-Random)
@@ -22,43 +21,38 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
-"@ | Out-File -FilePath $backendEnv -Encoding utf8
-    Write-Host "✅ Created backend/.env" -ForegroundColor Green
+"@
+    $backendContent | Out-File -FilePath $backendEnv -Encoding UTF8
+    Write-Host "Created $backendEnv"
 } else {
-    Write-Host "✅ backend/.env already exists" -ForegroundColor Green
+    Write-Host "$backendEnv already exists"
 }
 
 # Mobile App .env
 $mobileEnv = "mobile-app\.env"
 if (!(Test-Path $mobileEnv)) {
-    Write-Host "Creating mobile-app/.env..." -ForegroundColor Yellow
-    @"
+    Write-Host "Creating $mobileEnv..."
+    $mobileContent = @"
 EXPO_PUBLIC_API_URL=http://localhost:4000/api/v1
 EXPO_PUBLIC_USE_MOCK_DATA=false
-"@ | Out-File -FilePath $mobileEnv -Encoding utf8
-    Write-Host "✅ Created mobile-app/.env" -ForegroundColor Green
+"@
+    $mobileContent | Out-File -FilePath $mobileEnv -Encoding UTF8
+    Write-Host "Created $mobileEnv"
 } else {
-    Write-Host "✅ mobile-app/.env already exists" -ForegroundColor Green
+    Write-Host "$mobileEnv already exists"
 }
 
 # Admin .env.local
 $adminEnv = "admin\.env.local"
 if (!(Test-Path $adminEnv)) {
-    Write-Host "Creating admin/.env.local..." -ForegroundColor Yellow
-    @"
+    Write-Host "Creating $adminEnv..."
+    $adminContent = @"
 NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
-"@ | Out-File -FilePath $adminEnv -Encoding utf8
-    Write-Host "✅ Created admin/.env.local" -ForegroundColor Green
+"@
+    $adminContent | Out-File -FilePath $adminEnv -Encoding UTF8
+    Write-Host "Created $adminEnv"
 } else {
-    Write-Host "✅ admin/.env.local already exists" -ForegroundColor Green
+    Write-Host "$adminEnv already exists"
 }
 
-Write-Host ""
-Write-Host "✅ Environment setup complete!" -ForegroundColor Green
-Write-Host ""
-Write-Host "📝 Next steps:" -ForegroundColor Cyan
-Write-Host "   1. Make sure MongoDB is running (or use MongoDB Atlas)" -ForegroundColor White
-Write-Host "   2. Install dependencies: npm install (in each directory)" -ForegroundColor White
-Write-Host "   3. Run: .\start-system.ps1" -ForegroundColor White
-Write-Host ""
-
+Write-Host "Environment setup complete!"
