@@ -2,8 +2,6 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { useGameStore } from '../../../src/features/games/state/useGameStore';
-import { useTheme } from '../../../src/components/ThemeProvider';
-import { ThemedText } from '../../../src/components/ThemedText';
 
 const GAMES = [
   {
@@ -101,19 +99,14 @@ const GAMES = [
 
 export default function GamesListScreen() {
   const leaderboard = useGameStore((state) => state.leaderboard);
-  const { colors, isDark } = useTheme();
-
-  const gamesBg = isDark ? colors.background.primary : '#f8fafc';
-  const cardBg = isDark ? colors.background.secondary : '#FFFFFF';
-  const borderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: gamesBg }]} edges={['top']}>
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: gamesBg }]}>
-        <ThemedText style={styles.heading}>Games</ThemedText>
-        <ThemedText style={styles.subtitle}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.heading}>Games</Text>
+        <Text style={styles.subtitle}>
           Test your knowledge and have fun with spiritual games.
-        </ThemedText>
+        </Text>
 
         <View style={styles.gamesGrid}>
           {GAMES.map((game) => {
@@ -122,20 +115,14 @@ export default function GamesListScreen() {
               const topScore = scores && scores.length > 0 ? scores[0] : null;
               return (
                 <Link key={game.id} href={game.route as any} asChild>
-                  <TouchableOpacity style={[
-                    styles.gameCard,
-                    {
-                      backgroundColor: cardBg,
-                      borderColor: borderColor
-                    }
-                  ]}>
+                  <TouchableOpacity style={styles.gameCard}>
                     <Text style={styles.gameIcon}>{game.icon}</Text>
-                    <ThemedText style={styles.gameTitle}>{game.title}</ThemedText>
-                    <ThemedText style={styles.gameDescription}>{game.description}</ThemedText>
+                    <Text style={styles.gameTitle}>{game.title}</Text>
+                    <Text style={styles.gameDescription}>{game.description}</Text>
                     {topScore && (
-                      <ThemedText style={styles.highScore}>
+                      <Text style={styles.highScore}>
                         Best: {topScore.score} points
-                      </ThemedText>
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </Link>
@@ -144,16 +131,10 @@ export default function GamesListScreen() {
               console.error('Error loading game scores:', error);
               return (
                 <Link key={game.id} href={game.route as any} asChild>
-                  <TouchableOpacity style={[
-                    styles.gameCard,
-                    {
-                      backgroundColor: cardBg,
-                      borderColor: borderColor
-                    }
-                  ]}>
+                  <TouchableOpacity style={styles.gameCard}>
                     <Text style={styles.gameIcon}>{game.icon}</Text>
-                    <ThemedText style={styles.gameTitle}>{game.title}</ThemedText>
-                    <ThemedText style={styles.gameDescription}>{game.description}</ThemedText>
+                    <Text style={styles.gameTitle}>{game.title}</Text>
+                    <Text style={styles.gameDescription}>{game.description}</Text>
                   </TouchableOpacity>
                 </Link>
               );
@@ -161,16 +142,16 @@ export default function GamesListScreen() {
           })}
         </View>
 
-        <View style={[styles.leaderboardSection, { backgroundColor: cardBg, borderColor: borderColor, borderWidth: isDark ? 1 : 0 }]}>
-          <ThemedText style={styles.sectionTitle}>Your Top Scores</ThemedText>
+        <View style={styles.leaderboardSection}>
+          <Text style={styles.sectionTitle}>Your Top Scores</Text>
           {GAMES.map((game) => {
             try {
               const scores = leaderboard(game.id as 'trivia' | 'puzzle' | 'saint' | 'memory');
               if (!scores || scores.length === 0) return null;
               return (
-                <View key={game.id} style={[styles.scoreRow, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#e2e8f0' }]}>
-                  <ThemedText style={styles.scoreGame}>{game.title}</ThemedText>
-                  <ThemedText style={[styles.scoreValue, { color: colors.secondary.main }]}>{scores[0].score} pts</ThemedText>
+                <View key={game.id} style={styles.scoreRow}>
+                  <Text style={styles.scoreGame}>{game.title}</Text>
+                  <Text style={styles.scoreValue}>{scores[0].score} pts</Text>
                 </View>
               );
             } catch (error) {
@@ -186,7 +167,7 @@ export default function GamesListScreen() {
               return true;
             }
           }) && (
-              <ThemedText style={styles.emptyScores}>No scores yet. Play a game to get started!</ThemedText>
+              <Text style={styles.emptyScores}>No scores yet. Play a game to get started!</Text>
             )}
         </View>
       </ScrollView>
