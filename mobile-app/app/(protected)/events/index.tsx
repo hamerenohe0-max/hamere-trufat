@@ -3,49 +3,52 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { useEvents } from '../../../src/features/events/hooks/useEvents';
 import { formatEventDate } from '../../../src/utils/dateFormat';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
 export default function EventsListScreen() {
+  const { colors, isDark } = useTheme();
   const eventsQuery = useEvents();
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>Events</Text>
-      <Text style={styles.subtitle}>
-        Upcoming church events, celebrations, and gatherings.
-      </Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background.primary }]} edges={['top']}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <ThemedText style={[styles.heading, { color: colors.text.primary }]}>Events</ThemedText>
+        <ThemedText style={styles.subtitle}>
+          Upcoming church events, celebrations, and gatherings.
+        </ThemedText>
 
-      {eventsQuery.isLoading ? (
-        <ActivityIndicator size="large" color="#2563eb" />
-      ) : eventsQuery.data?.length ? (
-        eventsQuery.data.map((event) => (
-          <Link key={event.id} href={`/(protected)/events/${event.id}`} asChild>
-            <TouchableOpacity style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.title}>{event.name}</Text>
-                {event.featured && (
-                  <View style={styles.featuredBadge}>
-                    <Text style={styles.featuredText}>Featured</Text>
-                  </View>
+        {eventsQuery.isLoading ? (
+          <ActivityIndicator size="large" color={colors.primary.main} />
+        ) : eventsQuery.data?.length ? (
+          eventsQuery.data.map((event) => (
+            <Link key={event.id} href={`/(protected)/events/${event.id}`} asChild>
+              <TouchableOpacity style={[styles.card, { backgroundColor: colors.background.secondary }]}>
+                <View style={styles.cardHeader}>
+                  <ThemedText style={[styles.title, { color: colors.text.primary }]}>{event.name}</ThemedText>
+                  {event.featured && (
+                    <View style={[styles.featuredBadge, { backgroundColor: isDark ? colors.primary.main + '30' : '#fef3c7' }]}>
+                      <ThemedText style={[styles.featuredText, { color: isDark ? colors.primary.light : '#92400e' }]}>Featured</ThemedText>
+                    </View>
+                  )}
+                </View>
+                <ThemedText style={[styles.date, { color: colors.primary.main }]}>
+                  {formatEventDate(event.startDate)}
+                </ThemedText>
+                <ThemedText style={styles.location}>📍 {event.location}</ThemedText>
+                {event.description && (
+                  <ThemedText style={styles.description} numberOfLines={2}>
+                    {event.description}
+                  </ThemedText>
                 )}
-              </View>
-              <Text style={styles.date}>
-                {formatEventDate(event.startDate)}
-              </Text>
-              <Text style={styles.location}>📍 {event.location}</Text>
-              {event.description && (
-                <Text style={styles.description} numberOfLines={2}>
-                  {event.description}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </Link>
-        ))
-      ) : (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>No events available.</Text>
-        </View>
-      )}
+              </TouchableOpacity>
+            </Link>
+          ))
+        ) : (
+          <View style={[styles.empty, { backgroundColor: colors.background.secondary }]}>
+            <ThemedText style={styles.emptyText}>No events available.</ThemedText>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -54,21 +57,17 @@ export default function EventsListScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   container: {
     padding: 24,
     paddingTop: 16,
     gap: 16,
-    backgroundColor: '#f8fafc',
   },
   heading: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0f172a',
   },
   subtitle: {
-    color: '#475569',
     marginBottom: 8,
   },
   card: {
@@ -91,32 +90,26 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#0f172a',
     flex: 1,
   },
   featuredBadge: {
-    backgroundColor: '#fef3c7',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     marginLeft: 8,
   },
   featuredText: {
-    color: '#92400e',
     fontSize: 10,
     fontWeight: '600',
   },
   date: {
-    color: '#2563eb',
     fontWeight: '600',
     fontSize: 14,
   },
   location: {
-    color: '#64748b',
     fontSize: 14,
   },
   description: {
-    color: '#475569',
     fontSize: 14,
     marginTop: 4,
   },

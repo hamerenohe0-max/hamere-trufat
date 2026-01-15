@@ -68,19 +68,19 @@ export const dashboardApi = {
       })),
       featuredArticle: mockArticles[0]
         ? {
-            ...mockArticles[0],
-            excerpt: mockArticles[0].content.substring(0, 150) + '...',
-            readingTime: '5 min',
-            keywords: [],
-            bookmarked: false,
-          }
+          ...mockArticles[0],
+          excerpt: mockArticles[0].content.substring(0, 150) + '...',
+          readingTime: `${Math.max(1, Math.ceil((mockArticles[0].content?.split(/\s+/)?.length || 0) / 200))} min`,
+          keywords: [],
+          bookmarked: false,
+        }
         : undefined,
       todaysSaint: mockTodaysSaint
         ? {
-            name: mockTodaysSaint.name,
-            biography: mockTodaysSaint.biography,
-            portraitUrl: mockTodaysSaint.icon,
-          }
+          name: mockTodaysSaint.name,
+          biography: mockTodaysSaint.biography,
+          portraitUrl: mockTodaysSaint.icon,
+        }
         : undefined,
       upcomingEvent: mockEvents.find((e) => new Date(e.startDate) > new Date()),
       quickLinks: [

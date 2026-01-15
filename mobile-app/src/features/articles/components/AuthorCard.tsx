@@ -3,10 +3,13 @@ import { Author } from '../../../types/models';
 import { colors } from '../../../config/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../../../components/ThemeProvider';
+import { ThemedText } from '../../../components/ThemedText';
 
 export function AuthorCard({ author }: { author?: Author }) {
+  const { colors: themeColors, isDark } = useTheme();
   const router = useRouter();
-  
+
   if (!author) return null;
 
   const handlePress = () => {
@@ -14,42 +17,42 @@ export function AuthorCard({ author }: { author?: Author }) {
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.card, { backgroundColor: themeColors.background.secondary }]} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.avatarContainer}>
         {author.avatarUrl ? (
           <Image source={{ uri: author.avatarUrl }} style={styles.avatar} />
         ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Ionicons name="person" size={24} color={colors.text.tertiary} />
+          <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+            <Ionicons name="person" size={24} color={themeColors.text.tertiary} />
           </View>
         )}
       </View>
       <View style={styles.content}>
-        <Text style={styles.name}>{author.name}</Text>
-        {author.title && <Text style={styles.title}>{author.title}</Text>}
+        <ThemedText style={styles.name}>{author.name}</ThemedText>
+        {author.title && <ThemedText style={styles.title}>{author.title}</ThemedText>}
         {author.bio && (
-          <Text style={styles.bio} numberOfLines={2}>
+          <ThemedText style={styles.bio} numberOfLines={2}>
             {author.bio}
-          </Text>
+          </ThemedText>
         )}
         {(author.followers !== undefined || author.articlesCount !== undefined) && (
           <View style={styles.stats}>
             {author.followers !== undefined && (
-              <Text style={styles.statText}>
-                {author.followers >= 1000 
-                  ? `${(author.followers / 1000).toFixed(1)}K` 
+              <ThemedText style={styles.statText}>
+                {author.followers >= 1000
+                  ? `${(author.followers / 1000).toFixed(1)}K`
                   : author.followers} followers
-              </Text>
+              </ThemedText>
             )}
             {author.articlesCount !== undefined && author.articlesCount > 0 && (
-              <Text style={styles.statText}>
+              <ThemedText style={styles.statText}>
                 • {author.articlesCount} articles
-              </Text>
+              </ThemedText>
             )}
           </View>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+      <Ionicons name="chevron-forward" size={20} color={themeColors.text.tertiary} />
     </TouchableOpacity>
   );
 }
@@ -59,7 +62,6 @@ const styles = {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 12,
-    backgroundColor: colors.background.primary,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -76,12 +78,10 @@ const styles = {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.neutral.gray[200],
   },
   avatarPlaceholder: {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    backgroundColor: colors.neutral.gray[100],
   },
   content: {
     flex: 1,
@@ -90,18 +90,17 @@ const styles = {
   name: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: colors.text.primary,
   },
   title: {
     fontSize: 14,
-    color: colors.text.secondary,
     fontWeight: '500' as const,
+    opacity: 0.7,
   },
   bio: {
     fontSize: 13,
-    color: colors.text.tertiary,
     lineHeight: 18,
     marginTop: 2,
+    opacity: 0.6,
   },
   stats: {
     flexDirection: 'row' as const,
@@ -111,7 +110,7 @@ const styles = {
   },
   statText: {
     fontSize: 12,
-    color: colors.text.tertiary,
+    opacity: 0.5,
   },
 };
 

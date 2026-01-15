@@ -6,6 +6,7 @@ import { useTheme } from './ThemeProvider';
 import { formatSimpleDate } from '../utils/dateFormat';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 
 interface NewsCardProps {
     news: {
@@ -45,7 +46,7 @@ export const NewsCard = ({ news, cardWidth = 200, imageHeight = 120, variant = '
     const titleLines = isFeatured ? 4 : 3;
 
     // featured variant specific shadow/border (matches daily reading card)
-    const featuredStyles = isFeatured ? {
+    const cardStyles = isFeatured ? {
         backgroundColor: cardBg,
         borderColor: isDark ? 'rgba(157, 101, 49, 0.2)' : '#e2e8f0',
         borderWidth: 1,
@@ -55,9 +56,14 @@ export const NewsCard = ({ news, cardWidth = 200, imageHeight = 120, variant = '
         shadowRadius: 12,
         elevation: isDark ? 5 : 2,
     } : {
-        backgroundColor: cardBg,
+        backgroundColor: isDark ? colors.background.secondary : '#FFFFFF',
         borderWidth: 1,
-        borderColor: isDark ? colors.border.light : '#e2e8f0',
+        borderColor: isDark ? 'rgba(157, 101, 49, 0.15)' : 'rgba(0,0,0,0.05)',
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 8,
+        elevation: 3,
     };
 
     return (
@@ -66,11 +72,11 @@ export const NewsCard = ({ news, cardWidth = 200, imageHeight = 120, variant = '
                 style={[
                     styles.card,
                     {
-                        width: cardWidth,
+                        width: cardWidth as any,
                         maxWidth: typeof cardWidth === 'number' ? cardWidth : undefined,
                         height: cardHeight,
                     },
-                    featuredStyles
+                    cardStyles
                 ]}
                 activeOpacity={0.9}
             >
@@ -84,7 +90,7 @@ export const NewsCard = ({ news, cardWidth = 200, imageHeight = 120, variant = '
                 )}
 
                 {/* Image Section */}
-                <View style={[styles.imageContainer, { height: imageHeight }]}>
+                <View style={[styles.imageContainer, { height: imageHeight }, !isFeatured && styles.standardImageContainer]}>
                     {coverImage ? (
                         <Image source={{ uri: coverImage }} style={styles.image} resizeMode="cover" />
                     ) : (
@@ -92,16 +98,16 @@ export const NewsCard = ({ news, cardWidth = 200, imageHeight = 120, variant = '
                     )}
                     {/* Subtle Gradient Overlay for depth */}
                     <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.3)']}
+                        colors={['transparent', 'rgba(0,0,0,0.4)']}
                         style={StyleSheet.absoluteFill}
                     />
                 </View>
 
                 {/* Content Section */}
-                <View style={styles.content}>
+                <View style={[styles.content, !isFeatured && styles.standardContent]}>
                     <View style={styles.metaRow}>
-                        <View style={[styles.categoryDot, { backgroundColor: isFeatured ? colors.secondary.main : colors.primary.main }]} />
-                        <ThemedText style={[styles.date, isFeatured && { color: colors.secondary.main }]}>
+                        <View style={[styles.categoryDot, { backgroundColor: isDark ? colors.secondary.main : colors.primary.main }]} />
+                        <ThemedText style={[styles.date, { color: isDark ? colors.secondary.light : '#64748B' }]}>
                             {formatSimpleDate(news.publishedAt || news.createdAt)}
                         </ThemedText>
                     </View>
@@ -110,20 +116,30 @@ export const NewsCard = ({ news, cardWidth = 200, imageHeight = 120, variant = '
                     <ThemedText
                         style={[
                             styles.title,
-                            isFeatured && { minHeight: 72 } // Height for 4 lines (4 * 18)
+                            isFeatured && { minHeight: 72 },
+                            !isFeatured && { fontSize: 16, lineHeight: 22, color: isDark ? '#FFFFFF' : '#0F172A' }
                         ]}
                         numberOfLines={titleLines}
                         ellipsizeMode="tail"
                     >
                         {isFeatured ? (
-                            news.title.split(' ').reduce((acc, word, index) => {
+                            (news.title || '').split(' ').reduce((acc, word, index) => {
                                 if (index % 4 === 0 && index !== 0) return acc + '\n' + word;
                                 return acc + ' ' + word;
-                            })
+                            }, '')
                         ) : (
-                            news.title
+                            news.title || ''
                         )}
                     </ThemedText>
+
+                    {!isFeatured && (
+                        <View style={styles.standardFooter}>
+                            <ThemedText style={[styles.readMore, { color: colors.secondary.main }]}>
+                                Read Story
+                            </ThemedText>
+                            <Ionicons name="arrow-forward" size={14} color={colors.secondary.main} />
+                        </View>
+                    )}
                 </View>
 
                 {/* "Frame" overlay effect for featured cards on home page */}
@@ -148,37 +164,42 @@ export const NewsCard = ({ news, cardWidth = 200, imageHeight = 120, variant = '
 const styles = StyleSheet.create({
     card: {
         borderRadius: 16,
-        overflow: 'visible', // Must be visible for shadow
+        overflow: 'hidden',
         flexShrink: 0,
-        marginVertical: 6,
-        marginLeft: 2,
+        marginVertical: 10,
+        marginHorizontal: 2,
+    },
+    standardImageContainer: {
+        borderBottomWidth: 3,
+        borderBottomColor: '#9D6531', // Accent brand color
     },
     imageContainer: {
         width: '100%',
-        borderTopLeftRadius: 15,
-        borderTopRightRadius: 15,
         overflow: 'hidden',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
     },
     image: {
         width: '100%',
         height: '100%',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
     },
     imagePlaceholder: {
         width: '100%',
         height: '100%',
     },
     content: {
-        padding: 12,
-        paddingTop: 10,
-        gap: 6,
-        borderBottomLeftRadius: 15, // Match card radius manually since overflow visible
-        borderBottomRightRadius: 15,
+        padding: 16,
+        gap: 8,
+    },
+    standardContent: {
+        paddingTop: 12,
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        opacity: 0.8,
+        gap: 8,
     },
     categoryDot: {
         width: 6,
@@ -186,11 +207,10 @@ const styles = StyleSheet.create({
         borderRadius: 3,
     },
     date: {
-        fontSize: 10,
-        fontWeight: '600',
+        fontSize: 11,
+        fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        color: '#64748B', // Slate 500
+        letterSpacing: 0.8,
     },
     title: {
         fontSize: 13,
@@ -198,5 +218,20 @@ const styles = StyleSheet.create({
         lineHeight: 18,
         letterSpacing: -0.1,
         fontFamily: Platform.select({ ios: 'System', android: 'Roboto' }),
+    },
+    standardFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 8,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.05)',
+    },
+    readMore: {
+        fontSize: 13,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 });

@@ -12,10 +12,13 @@ import { useGameStore } from '../../../src/features/games/state/useGameStore';
 import { JOURNEY_THROUGH_BIBLE } from '../../../src/features/games/data/games_data';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../src/config/colors';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
 const { width } = Dimensions.get('window');
 
 export default function BibleJourneyScreen() {
+    const { colors: themeColors, isDark } = useTheme();
     const router = useRouter();
     const addScore = useGameStore((state) => state.addScore);
     const [currentStep, setCurrentStep] = useState(0);
@@ -45,10 +48,10 @@ export default function BibleJourneyScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
             <View style={styles.header}>
-                <Text style={styles.title}>Bible Journey</Text>
-                <Text style={styles.subtitle}>Navigate through Scripture</Text>
+                <ThemedText style={[styles.title, { color: themeColors.primary.main }]}>Bible Journey</ThemedText>
+                <ThemedText style={styles.subtitle}>Navigate through Scripture</ThemedText>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -59,19 +62,20 @@ export default function BibleJourneyScreen() {
 
                         return (
                             <View key={step.id} style={styles.nodeWrapper}>
-                                <View style={[styles.line, i === JOURNEY_THROUGH_BIBLE.length - 1 && { height: 0 }, isCompleted && styles.lineCompleted]} />
+                                <View style={[styles.line, i === JOURNEY_THROUGH_BIBLE.length - 1 && { height: 0 }, isCompleted && { backgroundColor: themeColors.primary.main }, { backgroundColor: isDark ? '#334155' : '#e2e8f0' }]} />
                                 <View style={[
                                     styles.node,
-                                    isActive && styles.nodeActive,
-                                    isCompleted && styles.nodeCompleted
+                                    { backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#e2e8f0' },
+                                    isActive && { borderColor: themeColors.primary.main, backgroundColor: themeColors.primary.main, transform: [{ scale: 1.2 }] },
+                                    isCompleted && { borderColor: themeColors.primary.main, backgroundColor: themeColors.primary.main }
                                 ]}>
-                                    <Text style={[styles.nodeText, (isActive || isCompleted) && styles.nodeTextActive]}>
+                                    <ThemedText style={[styles.nodeText, (isActive || isCompleted) && styles.nodeTextActive]}>
                                         {isCompleted ? '✓' : i + 1}
-                                    </Text>
+                                    </ThemedText>
                                 </View>
                                 <View style={styles.nodeInfo}>
-                                    <Text style={[styles.nodeTitle, isActive && styles.nodeTitleActive]}>{step.title}</Text>
-                                    {isActive && <Text style={styles.nodeDesc}>{step.description}</Text>}
+                                    <ThemedText style={[styles.nodeTitle, isActive && { color: themeColors.text.primary, fontWeight: '800' }]}>{step.title}</ThemedText>
+                                    {isActive && <ThemedText style={[styles.nodeDesc, { color: themeColors.primary.main }]}>{step.description}</ThemedText>}
                                 </View>
                             </View>
                         );
@@ -79,17 +83,17 @@ export default function BibleJourneyScreen() {
                 </View>
             </ScrollView>
 
-            <View style={styles.footer}>
+            <View style={[styles.footer, { backgroundColor: isDark ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.9)', borderTopColor: themeColors.border.subtle }]}>
                 {gameOver ? (
                     <View style={styles.winActions}>
-                        <Text style={styles.winText}>Journey Complete! 🏁</Text>
-                        <TouchableOpacity style={styles.button} onPress={reset}>
-                            <Text style={styles.buttonText}>START NEW JOURNEY</Text>
+                        <ThemedText style={[styles.winText, { color: themeColors.primary.main }]}>Journey Complete! 🏁</ThemedText>
+                        <TouchableOpacity style={[styles.button, { backgroundColor: themeColors.primary.main }]} onPress={reset}>
+                            <ThemedText style={styles.buttonText}>START NEW JOURNEY</ThemedText>
                         </TouchableOpacity>
                     </View>
                 ) : (
-                    <TouchableOpacity style={styles.button} onPress={handleMove}>
-                        <Text style={styles.buttonText}>STEP FORWARD</Text>
+                    <TouchableOpacity style={[styles.button, { backgroundColor: themeColors.primary.main }]} onPress={handleMove}>
+                        <ThemedText style={styles.buttonText}>STEP FORWARD</ThemedText>
                     </TouchableOpacity>
                 )}
             </View>
@@ -98,27 +102,23 @@ export default function BibleJourneyScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc' },
+    container: { flex: 1 },
     header: { padding: 30, paddingTop: 60, alignItems: 'center' },
-    title: { fontSize: 28, fontWeight: '800', color: colors.primary.main },
-    subtitle: { fontSize: 16, color: '#64748b' },
+    title: { fontSize: 28, fontWeight: '800' },
+    subtitle: { fontSize: 16, opacity: 0.6 },
     scrollContent: { paddingBottom: 150 },
     map: { paddingHorizontal: 40 },
     nodeWrapper: { flexDirection: 'row', height: 100 },
-    line: { width: 4, height: 100, backgroundColor: '#e2e8f0', position: 'absolute', left: 18, top: 20 },
-    lineCompleted: { backgroundColor: colors.primary.main },
-    node: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 4, borderColor: '#e2e8f0', justifyContent: 'center', alignItems: 'center', zIndex: 1 },
-    nodeActive: { borderColor: colors.primary.main, backgroundColor: colors.primary.main, transform: [{ scale: 1.2 }] },
-    nodeCompleted: { borderColor: colors.primary.main, backgroundColor: colors.primary.main },
-    nodeText: { fontSize: 14, fontWeight: '800', color: '#94a3b8' },
-    nodeTextActive: { color: '#fff' },
+    line: { width: 4, height: 100, position: 'absolute', left: 18, top: 20 },
+    node: { width: 40, height: 40, borderRadius: 20, borderWidth: 4, justifyContent: 'center', alignItems: 'center', zIndex: 1 },
+    nodeText: { fontSize: 14, fontWeight: '800', opacity: 0.5 },
+    nodeTextActive: { color: '#fff', opacity: 1 },
     nodeInfo: { marginLeft: 20, flex: 1 },
-    nodeTitle: { fontSize: 18, fontWeight: '700', color: '#64748b' },
-    nodeTitleActive: { color: '#0f172a' },
-    nodeDesc: { fontSize: 14, color: colors.primary.main, marginTop: 4, fontWeight: '500' },
-    footer: { position: 'absolute', bottom: 0, width: '100%', padding: 24, backgroundColor: 'rgba(255,255,255,0.9)', borderTopWidth: 1, borderTopColor: '#e2e8f0' },
-    button: { backgroundColor: colors.primary.main, padding: 20, borderRadius: 16, alignItems: 'center', elevation: 4 },
+    nodeTitle: { fontSize: 18, fontWeight: '700', opacity: 0.6 },
+    nodeDesc: { fontSize: 14, marginTop: 4, fontWeight: '500' },
+    footer: { position: 'absolute', bottom: 0, width: '100%', padding: 24, borderTopWidth: 1 },
+    button: { padding: 20, borderRadius: 16, alignItems: 'center', elevation: 4 },
     buttonText: { color: '#fff', fontWeight: '800', letterSpacing: 1 },
     winActions: { alignItems: 'center', gap: 12 },
-    winText: { fontSize: 22, fontWeight: '800', color: colors.primary.main, marginBottom: 8 }
+    winText: { fontSize: 22, fontWeight: '800', marginBottom: 8 }
 });

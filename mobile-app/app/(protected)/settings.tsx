@@ -30,11 +30,7 @@ export default function SettingsScreen() {
   const textColor = isDark ? colors.text.primary : colors.text.primary; // Should match theme
   const descriptionColor = isDark ? colors.text.tertiary : colors.text.secondary;
 
-  const languages = [
-    { code: 'en', label: 'English' },
-    { code: 'am', label: 'አማርኛ (Amharic)' },
-    { code: 'ti', label: 'ትግርኛ (Tigrinya)' },
-  ];
+  // Removed language options as requested
 
   const themes = [
     { value: 'light', label: 'Light' },
@@ -45,22 +41,22 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: screenBg }]} edges={['top']}>
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor: screenBg }]}>
-        <ThemedText style={styles.heading}>Settings</ThemedText>
+        <ThemedText style={[styles.heading, { color: colors.text.primary }]}>Settings</ThemedText>
 
         {/* Appearance */}
         <View style={[styles.section, { backgroundColor: cardBg }]}>
-          <ThemedText style={styles.sectionTitle}>Appearance</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>Appearance</ThemedText>
 
-          <View style={[styles.settingRow, { borderBottomColor: colors.border.light }]}>
-            <ThemedText style={styles.settingLabel}>Theme</ThemedText>
+          <View style={[styles.settingRow, { borderBottomColor: isDark ? colors.border.subtle : colors.border.light }]}>
+            <ThemedText style={[styles.settingLabel, { color: colors.text.primary }]}>Theme</ThemedText>
             <View style={styles.themeButtons}>
               {themes.map((t) => (
                 <TouchableOpacity
                   key={t.value}
                   style={[
                     styles.themeButton,
-                    { borderColor: colors.border.medium, backgroundColor: colors.background.tertiary },
-                    theme === t.value && { backgroundColor: colors.secondary.main, borderColor: colors.secondary.main },
+                    { borderColor: isDark ? colors.border.subtle : colors.border.medium, backgroundColor: isDark ? colors.background.tertiary : colors.background.tertiary },
+                    theme === t.value && { backgroundColor: colors.primary.main, borderColor: colors.primary.main },
                   ]}
                   onPress={() => setTheme(t.value as any)}
                 >
@@ -78,61 +74,36 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.settingRow}>
-            <ThemedText style={styles.settingLabel} type="primary">Font Size</ThemedText>
+            <ThemedText style={[styles.settingLabel, { color: colors.text.primary }]}>Font Size</ThemedText>
             <View style={styles.fontScaleRow}>
               <TouchableOpacity
-                style={[styles.fontButton, { backgroundColor: colors.secondary.main + '20' }]}
+                style={[styles.fontButton, { backgroundColor: isDark ? colors.primary.main + '30' : colors.primary.main + '20' }]}
                 onPress={() => setFontScale(Math.max(0.8, fontScale - 0.1))}
               >
-                <Text style={[styles.fontButtonText, { color: colors.secondary.main }]}>-</Text>
+                <Text style={[styles.fontButtonText, { color: colors.primary.main }]}>-</Text>
               </TouchableOpacity>
-              <ThemedText style={styles.fontScaleValue}>
+              <ThemedText style={[styles.fontScaleValue, { color: colors.text.primary }]}>
                 {(fontScale * 100).toFixed(0)}%
               </ThemedText>
               <TouchableOpacity
-                style={[styles.fontButton, { backgroundColor: colors.secondary.main + '20' }]}
+                style={[styles.fontButton, { backgroundColor: isDark ? colors.primary.main + '30' : colors.primary.main + '20' }]}
                 onPress={() => setFontScale(Math.min(1.5, fontScale + 0.1))}
               >
-                <Text style={[styles.fontButtonText, { color: colors.secondary.main }]}>+</Text>
+                <Text style={[styles.fontButtonText, { color: colors.primary.main }]}>+</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Language */}
-        <View style={[styles.section, { backgroundColor: cardBg }]}>
-          <ThemedText style={styles.sectionTitle}>Language</ThemedText>
-          {languages.map((lang) => (
-            <TouchableOpacity
-              key={lang.code}
-              style={[
-                styles.languageOption,
-                language === lang.code && styles.languageOptionActive,
-              ]}
-              onPress={() => setLanguage(lang.code)}
-            >
-              <Text
-                style={[
-                  styles.languageText,
-                  language === lang.code && [styles.languageTextActive, { color: colors.secondary.main }],
-                ]}
-              >
-                {lang.label}
-              </Text>
-              {language === lang.code && (
-                <Text style={[styles.checkmark, { color: colors.secondary.main }]}>✓</Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Removed Language section as requested */}
 
         {/* Notifications */}
         <View style={[styles.section, { backgroundColor: cardBg }]}>
-          <ThemedText style={styles.sectionTitle}>Notifications</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>Notifications</ThemedText>
 
-          <View style={[styles.settingRow, { borderBottomColor: colors.border.light }]}>
+          <View style={[styles.settingRow, { borderBottomColor: isDark ? colors.border.subtle : colors.border.light }]}>
             <View style={styles.settingLabelContainer}>
-              <ThemedText style={styles.settingLabel}>Push Notifications</ThemedText>
+              <ThemedText style={[styles.settingLabel, { color: colors.text.primary }]}>Push Notifications</ThemedText>
               <ThemedText style={styles.settingDescription} type="tertiary">
                 Receive push notifications on your device
               </ThemedText>
@@ -140,14 +111,14 @@ export default function SettingsScreen() {
             <Switch
               value={notificationPrefs.push}
               onValueChange={(value) => setNotifications({ push: value })}
-              trackColor={{ false: colors.border.medium, true: colors.secondary.light }}
-              thumbColor={notificationPrefs.push ? colors.secondary.main : '#f4f3f4'}
+              trackColor={{ false: isDark ? '#334155' : colors.border.medium, true: colors.primary.light }}
+              thumbColor={notificationPrefs.push ? colors.primary.main : '#f4f3f4'}
             />
           </View>
 
-          <View style={[styles.settingRow, { borderBottomColor: colors.border.light }]}>
+          <View style={[styles.settingRow, { borderBottomColor: isDark ? colors.border.subtle : colors.border.light }]}>
             <View style={styles.settingLabelContainer}>
-              <ThemedText style={styles.settingLabel}>Email Notifications</ThemedText>
+              <ThemedText style={[styles.settingLabel, { color: colors.text.primary }]}>Email Notifications</ThemedText>
               <ThemedText style={styles.settingDescription} type="tertiary">
                 Receive updates via email
               </ThemedText>
@@ -155,14 +126,14 @@ export default function SettingsScreen() {
             <Switch
               value={notificationPrefs.email}
               onValueChange={(value) => setNotifications({ email: value })}
-              trackColor={{ false: colors.border.medium, true: colors.secondary.light }}
-              thumbColor={notificationPrefs.email ? colors.secondary.main : '#f4f3f4'}
+              trackColor={{ false: isDark ? '#334155' : colors.border.medium, true: colors.primary.light }}
+              thumbColor={notificationPrefs.email ? colors.primary.main : '#f4f3f4'}
             />
           </View>
 
-          <View style={[styles.settingRow, { borderBottomColor: colors.border.light }]}>
+          <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
             <View style={styles.settingLabelContainer}>
-              <ThemedText style={styles.settingLabel}>Reminders</ThemedText>
+              <ThemedText style={[styles.settingLabel, { color: colors.text.primary }]}>Reminders</ThemedText>
               <ThemedText style={styles.settingDescription} type="tertiary">
                 Daily readings and event reminders
               </ThemedText>
@@ -170,19 +141,19 @@ export default function SettingsScreen() {
             <Switch
               value={notificationPrefs.reminders}
               onValueChange={(value) => setNotifications({ reminders: value })}
-              trackColor={{ false: colors.border.medium, true: colors.secondary.light }}
-              thumbColor={notificationPrefs.reminders ? colors.secondary.main : '#f4f3f4'}
+              trackColor={{ false: isDark ? '#334155' : colors.border.medium, true: colors.primary.light }}
+              thumbColor={notificationPrefs.reminders ? colors.primary.main : '#f4f3f4'}
             />
           </View>
         </View>
 
         {/* Offline Mode */}
         <View style={[styles.section, { backgroundColor: cardBg }]}>
-          <ThemedText style={styles.sectionTitle}>Offline Mode</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>Offline Mode</ThemedText>
 
-          <View style={[styles.settingRow, { borderBottomColor: colors.border.light }]}>
+          <View style={[styles.settingRow, { borderBottomColor: isDark ? colors.border.subtle : colors.border.light }]}>
             <View style={styles.settingLabelContainer}>
-              <ThemedText style={styles.settingLabel}>Auto Sync</ThemedText>
+              <ThemedText style={[styles.settingLabel, { color: colors.text.primary }]}>Auto Sync</ThemedText>
               <ThemedText style={styles.settingDescription} type="tertiary">
                 Automatically sync when online
               </ThemedText>
@@ -190,14 +161,14 @@ export default function SettingsScreen() {
             <Switch
               value={offlineMode.autoSync}
               onValueChange={(value) => setOfflineMode({ autoSync: value })}
-              trackColor={{ false: colors.border.medium, true: colors.secondary.light }}
-              thumbColor={offlineMode.autoSync ? colors.secondary.main : '#f4f3f4'}
+              trackColor={{ false: isDark ? '#334155' : colors.border.medium, true: colors.primary.light }}
+              thumbColor={offlineMode.autoSync ? colors.primary.main : '#f4f3f4'}
             />
           </View>
 
           <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
             <View style={styles.settingLabelContainer}>
-              <ThemedText style={styles.settingLabel}>WiFi Only</ThemedText>
+              <ThemedText style={[styles.settingLabel, { color: colors.text.primary }]}>WiFi Only</ThemedText>
               <ThemedText style={styles.settingDescription} type="tertiary">
                 Only sync when connected to WiFi
               </ThemedText>
@@ -205,29 +176,29 @@ export default function SettingsScreen() {
             <Switch
               value={offlineMode.wifiOnly}
               onValueChange={(value) => setOfflineMode({ wifiOnly: value })}
-              trackColor={{ false: colors.border.medium, true: colors.secondary.light }}
-              thumbColor={offlineMode.wifiOnly ? colors.secondary.main : '#f4f3f4'}
+              trackColor={{ false: isDark ? '#334155' : colors.border.medium, true: colors.primary.light }}
+              thumbColor={offlineMode.wifiOnly ? colors.primary.main : '#f4f3f4'}
             />
           </View>
         </View>
 
         {/* Account */}
         <View style={[styles.section, { backgroundColor: cardBg }]}>
-          <ThemedText style={styles.sectionTitle}>Account</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>Account</ThemedText>
           <TouchableOpacity
-            style={[styles.accountButton, { backgroundColor: colors.secondary.main + '10' }]}
+            style={[styles.accountButton, { backgroundColor: isDark ? colors.primary.main + '20' : colors.primary.main + '10' }]}
             onPress={() => router.push('/(protected)/profile')}
           >
-            <ThemedText style={[styles.accountButtonText, { color: colors.secondary.main }]}>Edit Profile</ThemedText>
+            <ThemedText style={[styles.accountButtonText, { color: colors.primary.main }]}>Edit Profile</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.accountButton, styles.logoutButton, { backgroundColor: '#fee2e2' }]}
+            style={[styles.accountButton, styles.logoutButton, { backgroundColor: isDark ? '#991b1b20' : '#fee2e2', borderColor: isDark ? '#991b1b' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
             onPress={() => {
               clearSession();
               router.replace('/(auth)/login');
             }}
           >
-            <ThemedText style={[styles.accountButtonText, styles.logoutButtonText]}>
+            <ThemedText style={[styles.accountButtonText, { color: isDark ? '#ef4444' : '#dc2626' }]}>
               Logout
             </ThemedText>
           </TouchableOpacity>
@@ -249,7 +220,6 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0f172a',
   },
   section: {
     borderRadius: 16,

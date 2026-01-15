@@ -45,9 +45,15 @@ const TRIVIA_QUESTIONS = [
   },
 ];
 
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 export default function TriviaGameScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const addScore = useGameStore((state) => state.addScore);
+  // ... rest of the logic ...
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -97,11 +103,11 @@ export default function TriviaGameScreen() {
 
   if (gameOver) {
     return (
-      <View style={styles.container}>
-        <View style={styles.gameOverCard}>
-          <Text style={styles.gameOverTitle}>Game Over!</Text>
-          <Text style={styles.finalScore}>Final Score: {score}</Text>
-          <Text style={styles.finalScoreText}>
+      <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={[styles.gameOverCard, { backgroundColor: isDark ? colors.background.secondary : '#FFF' }]}>
+          <ThemedText style={styles.gameOverTitle}>Game Over!</ThemedText>
+          <ThemedText style={[styles.finalScore, { color: colors.primary.main }]}>Final Score: {score}</ThemedText>
+          <ThemedText style={styles.finalScoreText}>
             {score >= 40
               ? 'Excellent! 🎉'
               : score >= 30
@@ -109,18 +115,18 @@ export default function TriviaGameScreen() {
                 : score >= 20
                   ? 'Good effort! 💪'
                   : 'Keep practicing! 📚'}
-          </Text>
+          </ThemedText>
           <View style={styles.gameOverActions}>
-            <TouchableOpacity style={styles.button} onPress={resetGame}>
-              <Text style={styles.buttonText}>Play Again</Text>
+            <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary.main }]} onPress={resetGame}>
+              <ThemedText style={styles.buttonText}>Play Again</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.button, styles.buttonOutline]}
+              style={[styles.button, styles.buttonOutline, { borderColor: colors.primary.main }]}
               onPress={() => router.back()}
             >
-              <Text style={[styles.buttonText, styles.buttonTextOutline]}>
-                Back to Games
-              </Text>
+              <ThemedText style={[styles.buttonText, { color: colors.primary.main }]}>
+                Exit
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -129,96 +135,101 @@ export default function TriviaGameScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.score}>Score: {score}</Text>
-        <Text style={styles.progress}>
-          Question {currentQuestion + 1} of {TRIVIA_QUESTIONS.length}
-        </Text>
-      </View>
-
-      <View style={styles.questionCard}>
-        <Text style={styles.question}>{question.question}</Text>
-
-        <View style={styles.options}>
-          {question.options.map((option, index) => {
-            const isSelected = selectedAnswer === index;
-            const isCorrect = index === question.correct;
-            const showCorrect = showResult && isCorrect;
-            const showWrong = showResult && isSelected && !isCorrect;
-
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.option,
-                  isSelected && styles.optionSelected,
-                  showCorrect && styles.optionCorrect,
-                  showWrong && styles.optionWrong,
-                ]}
-                onPress={() => handleAnswer(index)}
-                disabled={selectedAnswer !== null}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    isSelected && styles.optionTextSelected,
-                    showCorrect && styles.optionTextCorrect,
-                    showWrong && styles.optionTextWrong,
-                  ]}
-                >
-                  {option}
-                </Text>
-                {showCorrect && <Text style={styles.checkmark}>✓</Text>}
-                {showWrong && <Text style={styles.crossmark}>✗</Text>}
-              </TouchableOpacity>
-            );
-          })}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <ThemedText style={[styles.score, { color: colors.primary.main }]}>Score: {score}</ThemedText>
+          <ThemedText type="secondary" style={styles.progress}>
+            Question {currentQuestion + 1} / {TRIVIA_QUESTIONS.length}
+          </ThemedText>
         </View>
-      </View>
-    </ScrollView>
+
+        <View style={[styles.questionCard, { backgroundColor: isDark ? colors.background.secondary : '#FFF' }]}>
+          <ThemedText style={styles.question}>{question.question}</ThemedText>
+
+          <View style={styles.options}>
+            {question.options.map((option, index) => {
+              const isSelected = selectedAnswer === index;
+              const isCorrect = index === question.correct;
+              const showCorrect = showResult && isCorrect;
+              const showWrong = showResult && isSelected && !isCorrect;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.option,
+                    { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc' },
+                    isSelected && { borderColor: colors.primary.main, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#eef2ff' },
+                    showCorrect && { borderColor: '#10b981', backgroundColor: isDark ? '#064e3b20' : '#d1fae5' },
+                    showWrong && { borderColor: '#ef4444', backgroundColor: isDark ? '#991b1b20' : '#fee2e2' },
+                  ]}
+                  onPress={() => handleAnswer(index)}
+                  disabled={selectedAnswer !== null}
+                >
+                  <ThemedText
+                    style={[
+                      styles.optionText,
+                      isSelected && { color: colors.primary.main, fontWeight: '700' },
+                      showCorrect && { color: '#065f46', fontWeight: '700' },
+                      showWrong && { color: '#991b1b', fontWeight: '700' },
+                    ]}
+                  >
+                    {option}
+                  </ThemedText>
+                  {showCorrect && <ThemedText style={styles.checkmark}>✓</ThemedText>}
+                  {showWrong && <ThemedText style={styles.crossmark}>✗</ThemedText>}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: '#f8fafc',
+    padding: 20,
+    gap: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 8,
   },
   score: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2563eb',
+    fontSize: 20,
+    fontWeight: '800',
   },
   progress: {
     fontSize: 14,
-    color: '#64748b',
+    fontWeight: '600',
   },
   questionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     gap: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   question: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#0f172a',
-    lineHeight: 28,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 30,
+    letterSpacing: -0.5,
   },
   options: {
     gap: 12,
   },
   option: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -226,33 +237,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  optionSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eef2ff',
-  },
-  optionCorrect: {
-    borderColor: '#10b981',
-    backgroundColor: '#d1fae5',
-  },
-  optionWrong: {
-    borderColor: '#ef4444',
-    backgroundColor: '#fee2e2',
-  },
   optionText: {
     fontSize: 16,
-    color: '#1f2937',
-  },
-  optionTextSelected: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  optionTextCorrect: {
-    color: '#10b981',
-    fontWeight: '600',
-  },
-  optionTextWrong: {
-    color: '#ef4444',
-    fontWeight: '600',
   },
   checkmark: {
     fontSize: 20,
@@ -265,51 +251,50 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   gameOverCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    gap: 16,
+    gap: 20,
     marginTop: 100,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 4,
   },
   gameOverTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0f172a',
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -1,
   },
   finalScore: {
     fontSize: 24,
-    fontWeight: '600',
-    color: '#2563eb',
+    fontWeight: '700',
   },
   finalScoreText: {
     fontSize: 18,
-    color: '#475569',
     textAlign: 'center',
+    opacity: 0.8,
   },
   gameOverActions: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 8,
+    marginTop: 16,
   },
   button: {
-    backgroundColor: '#2563eb',
+    flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
   buttonOutline: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#2563eb',
-  },
-  buttonTextOutline: {
-    color: '#2563eb',
+    borderWidth: 2,
   },
 });
 

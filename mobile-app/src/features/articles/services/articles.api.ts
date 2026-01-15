@@ -99,7 +99,7 @@ function mapArticleFromBackend(data: any): SpiritualArticle {
     views: data.views || 0,
     tags: data.tags || [],
     relatedEventIds: [], // Backend might not send this yet
-    readingTime: '5 min', // Placeholder or calc
+    readingTime: `${Math.max(1, Math.ceil((data.content?.split(/\s+/)?.length || 0) / 200))} min`,
     bookmarked: data.bookmarked || false,
     reactions: data.reactions || { likes: data.likes || 0, dislikes: data.dislikes || 0, userReaction: null },
     author: data.author ? {

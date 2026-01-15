@@ -11,6 +11,8 @@ import {
 import { Author } from '../../../types/models';
 import { colors } from '../../../config/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../components/ThemeProvider';
+import { ThemedText } from '../../../components/ThemedText';
 
 interface PublisherProfileProps {
   author: Author;
@@ -29,6 +31,7 @@ export function PublisherProfile({
   activeTab: externalActiveTab,
   onTabChange,
 }: PublisherProfileProps) {
+  const { colors: themeColors, isDark } = useTheme();
   const [internalActiveTab, setInternalActiveTab] = useState<'posts' | 'about'>('posts');
   const [isImageExpanded, setIsImageExpanded] = useState(false);
   const activeTab = externalActiveTab ?? internalActiveTab;
@@ -50,16 +53,16 @@ export function PublisherProfile({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       {/* Cover Image Section */}
-      <View style={styles.coverContainer}>
+      <View style={[styles.coverContainer, { backgroundColor: themeColors.primary.main }]}>
         <View style={styles.coverImage}>
-          <View style={styles.coverGradient} />
+          <View style={[styles.coverGradient, { backgroundColor: themeColors.primary.dark }]} />
         </View>
 
         {/* Profile Picture Overlay */}
         <View style={styles.profilePictureContainer}>
-          <View style={styles.profilePictureBorder}>
+          <View style={[styles.profilePictureBorder, { backgroundColor: themeColors.background.secondary, borderColor: themeColors.background.secondary }]}>
             <TouchableOpacity onPress={() => author.avatarUrl && setIsImageExpanded(true)}>
               <Image
                 source={
@@ -67,7 +70,7 @@ export function PublisherProfile({
                     ? { uri: author.avatarUrl }
                     : require('../../../../assets/icon.png')
                 }
-                style={styles.profilePicture}
+                style={[styles.profilePicture, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}
               />
             </TouchableOpacity>
           </View>
@@ -99,92 +102,95 @@ export function PublisherProfile({
       {/* Profile Info Section */}
       <View style={styles.infoSection}>
         <View style={styles.nameSection}>
-          <Text style={styles.name}>{author.name}</Text>
+          <ThemedText style={styles.name}>{author.name}</ThemedText>
           {author.title && (
-            <Text style={styles.title}>{author.title}</Text>
+            <ThemedText style={styles.title}>{author.title}</ThemedText>
           )}
         </View>
 
         {/* Stats Bar */}
-        <View style={styles.statsBar}>
+        <View style={[styles.statsBar, { borderColor: themeColors.border.subtle }]}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatNumber(articlesCount)}</Text>
-            <Text style={styles.statLabel}>Posts</Text>
+            <ThemedText style={styles.statNumber}>{formatNumber(articlesCount)}</ThemedText>
+            <ThemedText style={styles.statLabel}>Posts</ThemedText>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: themeColors.border.subtle }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatNumber(author.followers)}</Text>
-            <Text style={styles.statLabel}>Followers</Text>
+            <ThemedText style={styles.statNumber}>{formatNumber(author.followers)}</ThemedText>
+            <ThemedText style={styles.statLabel}>Followers</ThemedText>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: themeColors.border.subtle }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatNumber(author.articlesCount)}</Text>
-            <Text style={styles.statLabel}>Articles</Text>
+            <ThemedText style={styles.statNumber}>{formatNumber(author.articlesCount)}</ThemedText>
+            <ThemedText style={styles.statLabel}>Articles</ThemedText>
           </View>
         </View>
 
         {/* Bio Section */}
         {author.bio && (
           <View style={styles.bioSection}>
-            <Text style={styles.bio}>{author.bio}</Text>
+            <ThemedText style={styles.bio}>{author.bio}</ThemedText>
           </View>
         )}
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={[styles.followButton, isFollowing && styles.followingButton]}
+            style={[
+              styles.followButton,
+              { backgroundColor: isFollowing ? (isDark ? '#334155' : '#f1f5f9') : (isDark ? themeColors.secondary.main : themeColors.primary.main) }
+            ]}
             onPress={onFollow}
           >
-            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+            <ThemedText style={[styles.followButtonText, { color: isFollowing ? themeColors.text.primary : '#fff' }]}>
               {isFollowing ? 'Following' : 'Follow'}
-            </Text>
+            </ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.messageButton}>
-            <Ionicons name="chatbubble-outline" size={20} color={colors.text.primary} />
+          <TouchableOpacity style={[styles.messageButton, { backgroundColor: themeColors.background.secondary, borderColor: isDark ? themeColors.secondary.main : themeColors.border.subtle }]}>
+            <Ionicons name="chatbubble-outline" size={20} color={isDark ? themeColors.secondary.main : themeColors.text.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.moreButton}>
-            <Ionicons name="ellipsis-horizontal" size={20} color={colors.text.primary} />
+          <TouchableOpacity style={[styles.moreButton, { backgroundColor: themeColors.background.secondary, borderColor: isDark ? themeColors.secondary.main : themeColors.border.subtle }]}>
+            <Ionicons name="ellipsis-horizontal" size={20} color={isDark ? themeColors.secondary.main : themeColors.text.primary} />
           </TouchableOpacity>
         </View>
 
         {/* Tab Navigation */}
-        <View style={styles.tabContainer}>
+        <View style={[styles.tabContainer, { borderColor: themeColors.border.subtle }]}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
+            style={[styles.tab, activeTab === 'posts' && { borderBottomColor: isDark ? themeColors.secondary.main : themeColors.primary.main, borderBottomWidth: 2 }]}
             onPress={() => handleTabChange('posts')}
           >
             <Ionicons
               name={activeTab === 'posts' ? 'grid' : 'grid-outline'}
               size={24}
-              color={activeTab === 'posts' ? colors.primary.main : colors.text.tertiary}
+              color={activeTab === 'posts' ? (isDark ? themeColors.secondary.main : themeColors.primary.main) : themeColors.text.tertiary}
             />
-            <Text
+            <ThemedText
               style={[
                 styles.tabText,
-                activeTab === 'posts' && styles.activeTabText,
+                activeTab === 'posts' && { color: isDark ? themeColors.secondary.main : themeColors.primary.main, fontWeight: '700' },
               ]}
             >
               Posts
-            </Text>
+            </ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'about' && styles.activeTab]}
+            style={[styles.tab, activeTab === 'about' && { borderBottomColor: isDark ? themeColors.secondary.main : themeColors.primary.main, borderBottomWidth: 2 }]}
             onPress={() => handleTabChange('about')}
           >
             <Ionicons
               name={activeTab === 'about' ? 'information-circle' : 'information-circle-outline'}
               size={24}
-              color={activeTab === 'about' ? colors.primary.main : colors.text.tertiary}
+              color={activeTab === 'about' ? (isDark ? themeColors.secondary.main : themeColors.primary.main) : themeColors.text.tertiary}
             />
-            <Text
+            <ThemedText
               style={[
                 styles.tabText,
-                activeTab === 'about' && styles.activeTabText,
+                activeTab === 'about' && { color: isDark ? themeColors.secondary.main : themeColors.primary.main, fontWeight: '700' },
               ]}
             >
               About
-            </Text>
+            </ThemedText>
           </TouchableOpacity>
         </View>
       </View>
@@ -194,7 +200,6 @@ export function PublisherProfile({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.background.primary,
   },
   coverContainer: {
     position: 'relative',
@@ -232,7 +237,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 56,
-    backgroundColor: colors.neutral.gray[200],
   },
   infoSection: {
     marginTop: 70,
@@ -246,13 +250,12 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.text.primary,
     marginBottom: 4,
   },
   title: {
     fontSize: 16,
-    color: colors.text.secondary,
     fontWeight: '500',
+    opacity: 0.7,
   },
   statsBar: {
     flexDirection: 'row',
@@ -261,7 +264,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: colors.border.light,
     marginBottom: 16,
   },
   statItem: {
@@ -271,19 +273,17 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: colors.text.tertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    opacity: 0.6,
   },
   statDivider: {
     width: 1,
     height: 30,
-    backgroundColor: colors.border.light,
   },
   bioSection: {
     marginBottom: 16,
@@ -291,9 +291,9 @@ const styles = StyleSheet.create({
   },
   bio: {
     fontSize: 14,
-    color: colors.text.secondary,
     lineHeight: 20,
     textAlign: 'center',
+    opacity: 0.8,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -312,37 +312,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutral.gray[200],
   },
   followButtonText: {
-    color: colors.text.inverse,
     fontSize: 16,
     fontWeight: '600',
-  },
-  followingButtonText: {
-    color: colors.text.primary,
   },
   messageButton: {
     width: 48,
     height: 48,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border.medium,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background.primary,
   },
   moreButton: {
     width: 48,
     height: 48,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border.medium,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background.primary,
   },
   tabContainer: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderColor: colors.border.light,
     marginTop: 8,
   },
   tab: {
@@ -359,12 +349,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    color: colors.text.tertiary,
     fontWeight: '500',
-  },
-  activeTabText: {
-    color: colors.primary.main,
-    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,

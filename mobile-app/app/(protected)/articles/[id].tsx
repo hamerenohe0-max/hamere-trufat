@@ -17,9 +17,12 @@ import {
 import { AuthorCard } from '../../../src/features/articles/components/AuthorCard';
 import { ArticleImageGallery } from '../../../src/features/articles/components/ArticleImageGallery';
 import { colors } from '../../../src/config/colors';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 import * as Haptics from 'expo-haptics';
 
 export default function ArticleDetailScreen() {
+  const { colors: themeColors } = useTheme();
   const params = useLocalSearchParams<{ id: string }>();
   const articleQuery = useArticleDetail(params.id);
   const bookmarkMutation = useBookmarkArticle(params.id);
@@ -27,16 +30,16 @@ export default function ArticleDetailScreen() {
 
   if (articleQuery.isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={[styles.center, { backgroundColor: themeColors.background.primary }]}>
+        <ActivityIndicator size="large" color={themeColors.primary.main} />
       </View>
     );
   }
 
   if (!articleQuery.data) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.empty}>Article not found.</Text>
+      <View style={[styles.center, { backgroundColor: themeColors.background.primary }]}>
+        <ThemedText style={styles.empty}>Article not found.</ThemedText>
       </View>
     );
   }
@@ -44,71 +47,71 @@ export default function ArticleDetailScreen() {
   const article = articleQuery.data;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.heading}>{article.title}</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background.primary }]} edges={['top']}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: themeColors.background.primary }]}>
+        <ThemedText style={styles.heading}>{article.title}</ThemedText>
         <View style={styles.metaContainer}>
           {article.author ? (
             <Link href={`/(protected)/articles/author/${article.author.id}`} asChild>
               <TouchableOpacity>
-                <Text style={styles.authorName}>{article.author.name}</Text>
+                <ThemedText style={[styles.authorName, { color: themeColors.primary.main }]}>{article.author.name}</ThemedText>
               </TouchableOpacity>
             </Link>
           ) : (
-            <Text style={styles.meta}>Hamere Trufat</Text>
+            <ThemedText style={styles.meta}>Hamere Trufat</ThemedText>
           )}
-          <Text style={styles.meta}> • {article.readingTime}</Text>
+          <ThemedText style={styles.meta}> • {article.readingTime}</ThemedText>
         </View>
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.reaction, article.reactions?.userReaction === 'like' && styles.reactionActive]}
-          onPress={() => {
-            reactMutation.mutate('like');
-            Haptics.selectionAsync();
-          }}
-        >
-          <Text style={styles.reactionText}>
-            👍 {article.reactions?.likes || 0}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.reaction, article.reactions?.userReaction === 'dislike' && styles.reactionActive]}
-          onPress={() => {
-            reactMutation.mutate('dislike');
-            Haptics.selectionAsync();
-          }}
-        >
-          <Text style={styles.reactionText}>
-            👎 {article.reactions?.dislikes || 0}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.reaction}
-          onPress={async () => {
-            try {
-              await Share.share({
-                message: `${article.title}\n\n${article.excerpt || article.content.substring(0, 200)}...`,
-              });
-            } catch (error) {
-              console.error('Error sharing:', error);
-            }
-          }}
-        >
-          <Text style={styles.reactionText}>Share</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.reaction}
-          onPress={() => {
-            bookmarkMutation.mutate();
-            Haptics.selectionAsync();
-          }}
-        >
-          <Text style={styles.reactionText}>
-            {article.bookmarked ? '★ Bookmarked' : '☆ Bookmark'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.reaction, { borderColor: themeColors.border.subtle }, article.reactions?.userReaction === 'like' && { backgroundColor: themeColors.primary.main }]}
+            onPress={() => {
+              reactMutation.mutate('like');
+              Haptics.selectionAsync();
+            }}
+          >
+            <ThemedText style={[styles.reactionText, { color: article.reactions?.userReaction === 'like' ? '#fff' : themeColors.text.secondary }]}>
+              👍 {article.reactions?.likes || 0}
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.reaction, { borderColor: themeColors.border.subtle }, article.reactions?.userReaction === 'dislike' && { backgroundColor: themeColors.primary.main }]}
+            onPress={() => {
+              reactMutation.mutate('dislike');
+              Haptics.selectionAsync();
+            }}
+          >
+            <ThemedText style={[styles.reactionText, { color: article.reactions?.userReaction === 'dislike' ? '#fff' : themeColors.text.secondary }]}>
+              👎 {article.reactions?.dislikes || 0}
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.reaction, { borderColor: themeColors.border.subtle }]}
+            onPress={async () => {
+              try {
+                await Share.share({
+                  message: `${article.title}\n\n${article.excerpt || article.content.substring(0, 200)}...`,
+                });
+              } catch (error) {
+                console.error('Error sharing:', error);
+              }
+            }}
+          >
+            <ThemedText style={[styles.reactionText, { color: themeColors.text.secondary }]}>Share</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.reaction, { borderColor: themeColors.border.subtle }]}
+            onPress={() => {
+              bookmarkMutation.mutate();
+              Haptics.selectionAsync();
+            }}
+          >
+            <ThemedText style={[styles.reactionText, { color: themeColors.text.secondary }]}>
+              {article.bookmarked ? '★ Bookmarked' : '☆ Bookmark'}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
 
         <AuthorCard author={article.author} />
 
@@ -117,12 +120,12 @@ export default function ArticleDetailScreen() {
           <ArticleImageGallery images={article.images} maxDisplay={4} />
         )}
 
-        <Text style={styles.content}>{article.content}</Text>
+        <ThemedText style={styles.content}>{article.content}</ThemedText>
 
         <View style={styles.keywords}>
           {article.keywords.map((keyword) => (
-            <View key={keyword} style={styles.keyword}>
-              <Text style={styles.keywordText}>#{keyword}</Text>
+            <View key={keyword} style={[styles.keyword, { backgroundColor: themeColors.primary.main + '20' }]}>
+              <ThemedText style={[styles.keywordText, { color: themeColors.primary.main }]}>#{keyword}</ThemedText>
             </View>
           ))}
         </View>
@@ -162,7 +165,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   meta: {
-    color: '#94a3b8',
+    opacity: 0.6,
   },
   authorName: {
     color: '#2563eb',
@@ -191,7 +194,6 @@ const styles = StyleSheet.create({
   content: {
     fontSize: 16,
     lineHeight: 26,
-    color: '#111827',
   },
   keywords: {
     flexDirection: 'row',

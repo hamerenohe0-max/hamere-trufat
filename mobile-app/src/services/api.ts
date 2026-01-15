@@ -4,8 +4,9 @@ import { getApiBaseUrl, shouldUseMockData } from '../config/api.config';
 export const API_URL = getApiBaseUrl();
 export const USE_MOCK_DATA = shouldUseMockData();
 
-interface ApiOptions extends RequestInit {
+interface ApiOptions extends Omit<RequestInit, 'body'> {
   auth?: boolean;
+  body?: any;
 }
 
 export async function apiFetch<T>(
@@ -63,7 +64,7 @@ export async function apiFetch<T>(
   if (!response.ok) {
     const detail = await safeRead(response);
     let errorMessage = 'Request failed';
-    
+
     try {
       const errorData = JSON.parse(detail);
       errorMessage = errorData.message || errorData.error || errorMessage;
@@ -71,7 +72,7 @@ export async function apiFetch<T>(
       // If not JSON, use the text as-is or default message
       errorMessage = detail || errorMessage;
     }
-    
+
     // Log detailed error information
     console.error('API Fetch Error Response:', {
       url: fullUrl,
@@ -81,7 +82,7 @@ export async function apiFetch<T>(
       errorMessage,
       responseHeaders: Object.fromEntries(response.headers.entries()),
     });
-    
+
     // Provide more specific error messages
     if (response.status === 401) {
       errorMessage = 'Please log in to access this resource';
@@ -97,7 +98,7 @@ export async function apiFetch<T>(
       // CORS error or network failure
       errorMessage = `CORS or network error. Unable to reach ${API_URL}. Please check CORS configuration and network connectivity.`;
     }
-    
+
     throw new Error(errorMessage);
   }
 

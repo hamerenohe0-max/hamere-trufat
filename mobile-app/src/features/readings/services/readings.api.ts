@@ -14,13 +14,13 @@ export const readingsApi = {
         method: 'GET',
         auth: false, // Readings are public
       });
-      
-      const timeout = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('API timeout')), 2000) // 2 second timeout
+
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('API timeout')), 10000) // 10 second timeout
       );
-      
+
       const response = await Promise.race([apiCall, timeout]);
-      
+
       // Transform backend response to match DailyReading format if needed
       if (response && response.gospel) {
         return response;
@@ -29,7 +29,7 @@ export const readingsApi = {
       // Fallback to mock data if API fails or times out
       console.warn('API reading not available, using mock data:', error);
     }
-    
+
     // Use mock data as fallback (instant, no delay)
     let reading = mockReadings.find((r) => r.date === date);
     if (!reading && mockReadings.length > 0) {

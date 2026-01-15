@@ -207,7 +207,7 @@ export default function DailyReadingsScreen() {
 
             <View style={styles.actions}>
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: colors.primary.main }]}
+                style={[styles.actionButton, { backgroundColor: colors.secondary.main }]}
                 onPress={() =>
                   Share.share({
                     message: `${activeTab} Reading for ${date}\n\nGospel:\n${language === 'geez' ? reading.gospelGeez : reading.gospelAmharic}`,

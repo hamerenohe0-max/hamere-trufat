@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGameStore } from '../../../src/features/games/state/useGameStore';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 import * as Haptics from 'expo-haptics';
 
 // Memory match cards
@@ -30,6 +32,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export default function MemoryMatchScreen() {
+  const { colors: themeColors, isDark } = useTheme();
   const router = useRouter();
   const addScore = useGameStore((state) => state.addScore);
   const [cards, setCards] = useState<Array<{ id: number; symbol: string; name: string; flipped: boolean; matched: boolean }>>([]);
@@ -121,24 +124,24 @@ export default function MemoryMatchScreen() {
 
   if (gameWon) {
     return (
-      <View style={styles.container}>
-        <View style={styles.gameOverCard}>
-          <Text style={styles.gameOverTitle}>You Won! 🎉</Text>
-          <Text style={styles.finalScore}>Moves: {moves}</Text>
-          <Text style={styles.finalScoreText}>
+      <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
+        <View style={[styles.gameOverCard, { backgroundColor: themeColors.background.secondary }]}>
+          <ThemedText style={styles.gameOverTitle}>You Won! 🎉</ThemedText>
+          <ThemedText style={styles.finalScore}>Moves: {moves}</ThemedText>
+          <ThemedText style={styles.finalScoreText}>
             Score: {Math.max(100 - moves * 5, 10)} points
-          </Text>
+          </ThemedText>
           <View style={styles.gameOverActions}>
-            <TouchableOpacity style={styles.button} onPress={resetGame}>
-              <Text style={styles.buttonText}>Play Again</Text>
+            <TouchableOpacity style={[styles.button, { backgroundColor: themeColors.primary.main }]} onPress={resetGame}>
+              <ThemedText style={styles.buttonText}>Play Again</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.button, styles.buttonOutline]}
+              style={[styles.button, styles.buttonOutline, { borderColor: themeColors.primary.main }]}
               onPress={() => router.back()}
             >
-              <Text style={[styles.buttonText, styles.buttonTextOutline]}>
+              <ThemedText style={[styles.buttonText, { color: themeColors.primary.main }]}>
                 Back to Games
-              </Text>
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -147,10 +150,10 @@ export default function MemoryMatchScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: themeColors.background.primary }]}>
       <View style={styles.header}>
-        <Text style={styles.score}>Moves: {moves}</Text>
-        <Text style={styles.progress}>Matches: {matches}/{CARD_PAIRS.length}</Text>
+        <ThemedText style={[styles.score, { color: themeColors.primary.main }]}>Moves: {moves}</ThemedText>
+        <ThemedText style={styles.progress}>Matches: {matches}/{CARD_PAIRS.length}</ThemedText>
       </View>
 
       <View style={styles.grid}>
@@ -159,16 +162,17 @@ export default function MemoryMatchScreen() {
             key={card.id}
             style={[
               styles.card,
-              card.flipped && styles.cardFlipped,
-              card.matched && styles.cardMatched,
+              { backgroundColor: isDark ? '#1e293b' : '#e2e8f0', borderColor: isDark ? '#334155' : '#cbd5f5' },
+              card.flipped && { backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: themeColors.primary.main },
+              card.matched && { backgroundColor: isDark ? '#064e3b' : '#d1fae5', borderColor: '#10b981' },
             ]}
             onPress={() => handleCardPress(card.id)}
             disabled={card.matched}
           >
             {card.flipped || card.matched ? (
-              <Text style={styles.cardSymbol}>{card.symbol}</Text>
+              <ThemedText style={styles.cardSymbol}>{card.symbol}</ThemedText>
             ) : (
-              <Text style={styles.cardBack}>?</Text>
+              <ThemedText style={styles.cardBack}>?</ThemedText>
             )}
           </TouchableOpacity>
         ))}
@@ -181,7 +185,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -192,11 +195,10 @@ const styles = StyleSheet.create({
   score: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2563eb',
   },
   progress: {
     fontSize: 14,
-    color: '#64748b',
+    opacity: 0.6,
   },
   grid: {
     flexDirection: 'row',
@@ -207,31 +209,20 @@ const styles = StyleSheet.create({
   card: {
     width: 80,
     height: 80,
-    backgroundColor: '#e2e8f0',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#cbd5f5',
-  },
-  cardFlipped: {
-    backgroundColor: '#fff',
-    borderColor: '#2563eb',
-  },
-  cardMatched: {
-    backgroundColor: '#d1fae5',
-    borderColor: '#10b981',
   },
   cardSymbol: {
     fontSize: 32,
   },
   cardBack: {
     fontSize: 24,
-    color: '#64748b',
+    opacity: 0.5,
     fontWeight: '600',
   },
   gameOverCard: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
@@ -241,16 +232,14 @@ const styles = StyleSheet.create({
   gameOverTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0f172a',
   },
   finalScore: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#2563eb',
   },
   finalScoreText: {
     fontSize: 18,
-    color: '#475569',
+    opacity: 0.8,
   },
   gameOverActions: {
     flexDirection: 'row',
@@ -258,7 +247,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   button: {
-    backgroundColor: '#2563eb',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -271,10 +259,6 @@ const styles = StyleSheet.create({
   buttonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#2563eb',
-  },
-  buttonTextOutline: {
-    color: '#2563eb',
   },
 });
 

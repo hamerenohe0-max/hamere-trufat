@@ -11,8 +11,11 @@ import { useGameStore } from '../../../src/features/games/state/useGameStore';
 import { PRAYER_MATCHUP } from '../../../src/features/games/data/games_data';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../src/config/colors';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
 export default function PrayerMatchScreen() {
+    const { colors: themeColors, isDark } = useTheme();
     const router = useRouter();
     const addScore = useGameStore((state) => state.addScore);
     const [prayers, setPrayers] = useState<string[]>([]);
@@ -72,13 +75,13 @@ export default function PrayerMatchScreen() {
 
     if (gameOver) {
         return (
-            <View style={styles.container}>
-                <View style={styles.gameOverCard}>
-                    <Text style={styles.gameOverTitle}>Match Master! 🙏</Text>
-                    <Text style={styles.finalScore}>Score: {score}</Text>
+            <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
+                <View style={[styles.gameOverCard, { backgroundColor: themeColors.background.secondary }]}>
+                    <ThemedText style={styles.gameOverTitle}>Match Master! 🙏</ThemedText>
+                    <ThemedText style={[styles.finalScore, { color: themeColors.primary.main }]}>Score: {score}</ThemedText>
                     <View style={styles.gameOverActions}>
-                        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-                            <Text style={styles.buttonText}>Finish</Text>
+                        <TouchableOpacity style={[styles.button, { backgroundColor: themeColors.primary.main }]} onPress={() => router.back()}>
+                            <ThemedText style={styles.buttonText}>Finish</ThemedText>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -87,43 +90,45 @@ export default function PrayerMatchScreen() {
     }
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.title}>Prayer Match-Up</Text>
-            <Text style={styles.subtitle}>Link the prayer to its purpose</Text>
+        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: themeColors.background.primary }]}>
+            <ThemedText style={[styles.title, { color: themeColors.primary.main }]}>Prayer Match-Up</ThemedText>
+            <ThemedText style={styles.subtitle}>Link the prayer to its purpose</ThemedText>
 
             <View style={styles.columns}>
                 <View style={styles.column}>
-                    <Text style={styles.colTitle}>PRAYER</Text>
+                    <ThemedText style={styles.colTitle}>PRAYER</ThemedText>
                     {prayers.map(p => (
                         <TouchableOpacity
                             key={p}
                             style={[
                                 styles.item,
-                                selectedPrayer === p && styles.selected,
-                                matches[p] && styles.matched
+                                { backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: themeColors.border.subtle },
+                                selectedPrayer === p && { borderColor: themeColors.primary.main, backgroundColor: themeColors.primary.main + '20' },
+                                matches[p] && { borderColor: '#10b981', backgroundColor: isDark ? '#064e3b' : '#d1fae5' }
                             ]}
                             onPress={() => handleSelectPrayer(p)}
                             disabled={!!matches[p]}
                         >
-                            <Text style={[styles.itemText, (selectedPrayer === p || matches[p]) && styles.textActive]}>{p}</Text>
+                            <ThemedText style={[styles.itemText, (selectedPrayer === p || matches[p]) && { color: themeColors.primary.main }]}>{p}</ThemedText>
                         </TouchableOpacity>
                     ))}
                 </View>
 
                 <View style={styles.column}>
-                    <Text style={styles.colTitle}>PURPOSE</Text>
+                    <ThemedText style={styles.colTitle}>PURPOSE</ThemedText>
                     {purposes.map(p => (
                         <TouchableOpacity
                             key={p}
                             style={[
                                 styles.item,
-                                selectedPurpose === p && styles.selected,
-                                Object.values(matches).includes(p) && styles.matched
+                                { backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: themeColors.border.subtle },
+                                selectedPurpose === p && { borderColor: themeColors.primary.main, backgroundColor: themeColors.primary.main + '20' },
+                                Object.values(matches).includes(p) && { borderColor: '#10b981', backgroundColor: isDark ? '#064e3b' : '#d1fae5' }
                             ]}
                             onPress={() => handleSelectPurpose(p)}
                             disabled={Object.values(matches).includes(p)}
                         >
-                            <Text style={[styles.itemText, (selectedPurpose === p || Object.values(matches).includes(p)) && styles.textActive]}>{p}</Text>
+                            <ThemedText style={[styles.itemText, (selectedPurpose === p || Object.values(matches).includes(p)) && { color: themeColors.primary.main }]}>{p}</ThemedText>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -133,21 +138,18 @@ export default function PrayerMatchScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: '#f8fafc' },
-    title: { fontSize: 24, fontWeight: '800', color: colors.primary.main, textAlign: 'center', marginTop: 40 },
-    subtitle: { textAlign: 'center', color: '#64748b', marginBottom: 30 },
+    container: { flex: 1, padding: 20 },
+    title: { fontSize: 24, fontWeight: '800', textAlign: 'center', marginTop: 40 },
+    subtitle: { textAlign: 'center', opacity: 0.6, marginBottom: 30 },
     columns: { flexDirection: 'row', gap: 15 },
     column: { flex: 1, gap: 10 },
-    colTitle: { fontSize: 12, fontWeight: '800', color: '#94a3b8', textAlign: 'center' },
-    item: { padding: 15, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', minHeight: 80, justifyContent: 'center' },
-    selected: { borderColor: colors.primary.main, backgroundColor: colors.primary.lighter + '20' },
-    matched: { borderColor: '#10b981', backgroundColor: '#d1fae5' },
-    itemText: { fontSize: 13, fontWeight: '600', color: '#334155', textAlign: 'center' },
-    textActive: { color: colors.primary.main },
-    gameOverCard: { backgroundColor: '#fff', padding: 32, borderRadius: 24, alignItems: 'center', marginTop: 100 },
+    colTitle: { fontSize: 12, fontWeight: '800', opacity: 0.5, textAlign: 'center' },
+    item: { padding: 15, borderRadius: 12, borderWidth: 1, minHeight: 80, justifyContent: 'center' },
+    itemText: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+    gameOverCard: { padding: 32, borderRadius: 24, alignItems: 'center', marginTop: 100 },
     gameOverTitle: { fontSize: 28, fontWeight: '800' },
-    finalScore: { fontSize: 22, color: colors.primary.main, marginVertical: 10 },
-    button: { backgroundColor: colors.primary.main, paddingHorizontal: 40, paddingVertical: 15, borderRadius: 12 },
+    finalScore: { fontSize: 22, marginVertical: 10 },
+    button: { paddingHorizontal: 40, paddingVertical: 15, borderRadius: 12 },
     buttonText: { color: '#fff', fontWeight: '800' },
     gameOverActions: { marginTop: 20 }
 });

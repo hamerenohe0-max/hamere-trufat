@@ -6,10 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../src/config/colors';
 import { NotificationService, DEFAULT_PRAYER_ALARMS, PrayerAlarm } from '../../../src/services/NotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemedText } from '../../../src/components/ThemedText';
+import { useTheme } from '../../../src/components/ThemeProvider';
 
 const ALARMS_STORAGE_KEY = 'prayer_alarms_settings';
 
 export default function AlarmsScreen() {
+    const { colors: themeColors, isDark } = useTheme();
     const [alarms, setAlarms] = useState<PrayerAlarm[]>(DEFAULT_PRAYER_ALARMS);
 
     useEffect(() => {
@@ -57,16 +60,16 @@ export default function AlarmsScreen() {
     };
 
     const renderItem = ({ item }: { item: PrayerAlarm }) => (
-        <View style={styles.item}>
+        <View style={[styles.item, { backgroundColor: themeColors.background.secondary }]}>
             <View style={styles.textContainer}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.itemSubtitle}>
+                <ThemedText style={styles.itemTitle}>{item.title}</ThemedText>
+                <ThemedText style={styles.itemSubtitle}>
                     {item.hour.toString().padStart(2, '0')}:{item.minute.toString().padStart(2, '0')}
-                </Text>
+                </ThemedText>
             </View>
             <Switch
-                trackColor={{ false: '#e2e8f0', true: colors.primary.light }}
-                thumbColor={item.enabled ? colors.primary.main : '#f4f3f4'}
+                trackColor={{ false: isDark ? '#334155' : '#e2e8f0', true: (isDark ? themeColors.secondary.main : themeColors.primary.main) + '40' }}
+                thumbColor={item.enabled ? (isDark ? themeColors.secondary.main : themeColors.primary.main) : (isDark ? '#64748b' : '#f4f3f4')}
                 onValueChange={(val) => toggleAlarm(item.id, val)}
                 value={item.enabled}
             />
@@ -76,21 +79,21 @@ export default function AlarmsScreen() {
     const router = useRouter();
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background.primary }]} edges={['top']}>
             <Stack.Screen options={{ headerShown: false }} />
-            <View style={styles.header}>
+            <View style={[styles.header, { backgroundColor: themeColors.background.secondary, borderBottomColor: themeColors.border.subtle }]}>
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color={colors.primary.main} />
+                        <Ionicons name="arrow-back" size={24} color={isDark ? themeColors.secondary.main : themeColors.primary.main} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Prayer Alarms</Text>
+                    <ThemedText style={styles.headerTitle}>Prayer Alarms</ThemedText>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.headerContent}>
-                    <Ionicons name="notifications" size={48} color={colors.primary.main} />
-                    <Text style={styles.headerSubtitle}>
+                    <Ionicons name="notifications" size={48} color={isDark ? themeColors.secondary.main : themeColors.primary.main} />
+                    <ThemedText style={styles.headerSubtitle}>
                         Get notified for the 7 canonical hours of prayer.
-                    </Text>
+                    </ThemedText>
                 </View>
             </View>
             <FlatList
@@ -132,13 +135,12 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#1e293b',
     },
     headerSubtitle: {
         fontSize: 14,
-        color: '#64748b',
         textAlign: 'center',
         marginTop: 8,
+        opacity: 0.7,
     },
     list: {
         padding: 16,
@@ -163,12 +165,11 @@ const styles = StyleSheet.create({
     itemTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#334155',
     },
     itemSubtitle: {
         fontSize: 14,
-        color: '#94a3b8',
         marginTop: 2,
         fontVariant: ['tabular-nums'],
+        opacity: 0.6,
     },
 });

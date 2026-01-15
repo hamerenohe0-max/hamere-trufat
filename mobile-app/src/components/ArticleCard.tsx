@@ -6,6 +6,7 @@ import { useTheme } from './ThemeProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Platform } from 'react-native';
+import { formatSimpleDate } from '../utils/dateFormat';
 
 interface ArticleCardProps {
     article: {
@@ -16,6 +17,7 @@ interface ArticleCardProps {
         coverImage?: string;
         author?: { name: string };
         readingTime?: string;
+        publishedAt?: string;
         createdAt?: string;
     };
     cardWidth?: number | string;
@@ -40,8 +42,8 @@ export const ArticleCard = ({ article, cardWidth = '100%', imageHeight = 160, va
     const cardHeight = isFeatured ? 300 : undefined;
     const titleLines = isFeatured ? 2 : 2;
 
-    // Featured styles (matching NewsCard featured look)
-    const featuredStyles = isFeatured ? {
+    // featured variant specific shadow/border (matches daily reading card)
+    const cardStyles = isFeatured ? {
         backgroundColor: cardBg,
         borderColor: isDark ? 'rgba(157, 101, 49, 0.2)' : '#e2e8f0',
         borderWidth: 1,
@@ -51,9 +53,14 @@ export const ArticleCard = ({ article, cardWidth = '100%', imageHeight = 160, va
         shadowRadius: 12,
         elevation: isDark ? 5 : 2,
     } : {
-        backgroundColor: cardBg,
+        backgroundColor: isDark ? colors.background.secondary : '#FFFFFF',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
+        borderColor: isDark ? 'rgba(157, 101, 49, 0.15)' : 'rgba(0,0,0,0.05)',
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 8,
+        elevation: 3,
     };
 
     return (
@@ -62,11 +69,11 @@ export const ArticleCard = ({ article, cardWidth = '100%', imageHeight = 160, va
                 style={[
                     styles.card,
                     {
-                        width: cardWidth,
+                        width: cardWidth as any,
                         maxWidth: typeof cardWidth === 'number' ? cardWidth : undefined,
                         height: cardHeight,
                     },
-                    featuredStyles
+                    cardStyles
                 ]}
                 activeOpacity={0.7}
             >
@@ -79,7 +86,7 @@ export const ArticleCard = ({ article, cardWidth = '100%', imageHeight = 160, va
                     />
                 )}
 
-                <View style={[styles.imageContainer, { height: imageHeight }]}>
+                <View style={[styles.imageContainer, { height: imageHeight }, !isFeatured && styles.standardImageContainer]}>
                     {coverImage ? (
                         <Image
                             source={{ uri: coverImage }}
@@ -90,7 +97,7 @@ export const ArticleCard = ({ article, cardWidth = '100%', imageHeight = 160, va
                         <View style={[styles.imagePlaceholder, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     )}
                 </View>
-                <View style={styles.content}>
+                <View style={[styles.content, !isFeatured && styles.standardContent]}>
                     {isFeatured ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.secondary.main }} />
@@ -100,23 +107,24 @@ export const ArticleCard = ({ article, cardWidth = '100%', imageHeight = 160, va
                         </View>
                     ) : (
                         <ThemedText type="tertiary" style={styles.date}>
-                            Article
+                            {formatSimpleDate(article.createdAt || article.publishedAt)}
                         </ThemedText>
                     )}
                     <ThemedText
                         style={[
                             styles.title,
-                            isFeatured && { minHeight: 40, fontSize: 13, lineHeight: 18, letterSpacing: -0.1 }
+                            isFeatured && { minHeight: 40, fontSize: 13, lineHeight: 18, letterSpacing: -0.1 },
+                            !isFeatured && { fontSize: 17, lineHeight: 24, color: isDark ? '#FFFFFF' : '#0F172A' }
                         ]}
                         numberOfLines={titleLines}
                     >
                         {isFeatured ? (
-                            article.title.split(' ').reduce((acc, word, index) => {
+                            (article.title || '').split(' ').reduce((acc, word, index) => {
                                 if (index % 4 === 0 && index !== 0) return acc + '\n' + word;
                                 return acc + ' ' + word;
-                            })
+                            }, '')
                         ) : (
-                            article.title
+                            article.title || ''
                         )}
                     </ThemedText>
 
@@ -128,18 +136,27 @@ export const ArticleCard = ({ article, cardWidth = '100%', imageHeight = 160, va
 
                     <View style={styles.footer}>
                         <View style={styles.metaItem}>
-                            <Ionicons name="person-outline" size={10} color={isFeatured ? colors.secondary.main : colors.text.tertiary} />
-                            <ThemedText style={[styles.metaText, isFeatured && { color: colors.secondary.main }]}>
+                            <Ionicons name="person-outline" size={12} color={isDark ? colors.secondary.main : colors.primary.main} />
+                            <ThemedText style={[styles.metaText, { color: isDark ? colors.secondary.light : colors.text.secondary }]}>
                                 {article.author?.name?.split(' ')[0] ?? 'Admin'}
                             </ThemedText>
                         </View>
-                        <View style={styles.metaItem}>
-                            <Ionicons name="time-outline" size={10} color={isFeatured ? colors.secondary.main : colors.text.tertiary} />
-                            <ThemedText style={[styles.metaText, isFeatured && { color: colors.secondary.main }]}>
+                        <View style={[styles.metaItem, { marginLeft: 'auto' }]}>
+                            <Ionicons name="time-outline" size={12} color={isDark ? colors.secondary.main : colors.primary.main} />
+                            <ThemedText style={[styles.metaText, { color: isDark ? colors.secondary.light : colors.text.secondary }]}>
                                 {article.readingTime || '5 min'}
                             </ThemedText>
                         </View>
                     </View>
+
+                    {!isFeatured && (
+                        <View style={styles.standardFooter}>
+                            <ThemedText style={[styles.readMore, { color: colors.secondary.main }]}>
+                                Read Story
+                            </ThemedText>
+                            <Ionicons name="arrow-forward" size={14} color={colors.secondary.main} />
+                        </View>
+                    )}
                 </View>
 
                 {/* "Frame" overlay effect for featured cards */}
@@ -164,36 +181,43 @@ export const ArticleCard = ({ article, cardWidth = '100%', imageHeight = 160, va
 const styles = StyleSheet.create({
     card: {
         borderRadius: 16,
-        overflow: 'visible',
+        overflow: 'hidden',
         flexShrink: 0,
-        marginVertical: 6,
-        marginLeft: 2,
+        marginVertical: 10,
+        marginHorizontal: 2,
+    },
+    standardImageContainer: {
+        borderBottomWidth: 3,
+        borderBottomColor: '#9D6531', // Accent brand color
     },
     imageContainer: {
         width: '100%',
-        borderTopLeftRadius: 15,
-        borderTopRightRadius: 15,
         overflow: 'hidden',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
     },
     image: {
         width: '100%',
         height: '100%',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
     },
     imagePlaceholder: {
         width: '100%',
         height: '100%',
     },
     content: {
-        padding: 12,
-        paddingTop: 10,
-        gap: 6,
+        padding: 16,
+        gap: 8,
+    },
+    standardContent: {
+        paddingTop: 12,
     },
     date: {
-        fontSize: 10,
-        fontWeight: '600',
+        fontSize: 11,
+        fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 2,
+        letterSpacing: 0.8,
     },
     title: {
         fontSize: 15,
@@ -201,23 +225,41 @@ const styles = StyleSheet.create({
         lineHeight: 20,
     },
     excerpt: {
-        fontSize: 13,
-        lineHeight: 18,
+        fontSize: 14,
+        lineHeight: 20,
+        color: '#64748B',
     },
     footer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 4,
-        gap: 8,
+        marginTop: 8,
+        gap: 12,
+        paddingBottom: 4,
     },
     metaItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
     },
     metaText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '600',
         textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    standardFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 8,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.05)',
+    },
+    readMore: {
+        fontSize: 13,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 });

@@ -140,6 +140,8 @@ export const colors = {
 // Legacy exports for backward compatibility - will be defaults (light)
 export const primary = colors.primary.main;
 export const secondary = colors.secondary.main;
-export const background = colors.light.background.primary;
-export const text = colors.light.text.primary;
+export const background = colors.light.background;
+export const text = colors.light.text;
+export const border = colors.light.border;
+export const neutral = colors.light.neutral;
 

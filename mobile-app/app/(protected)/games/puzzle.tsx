@@ -45,8 +45,13 @@ const PUZZLES = [
   },
 ];
 
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 export default function PuzzleGameScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const addScore = useGameStore((state) => state.addScore);
   const [currentPuzzle, setCurrentPuzzle] = useState(0);
   const [score, setScore] = useState(0);
@@ -91,21 +96,21 @@ export default function PuzzleGameScreen() {
 
   if (gameOver) {
     return (
-      <View style={styles.container}>
-        <View style={styles.gameOverCard}>
-          <Text style={styles.gameOverTitle}>Puzzle Complete! 🎉</Text>
-          <Text style={styles.finalScore}>Final Score: {score}</Text>
+      <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={[styles.gameOverCard, { backgroundColor: isDark ? colors.background.secondary : '#FFF' }]}>
+          <ThemedText style={styles.gameOverTitle}>Puzzle Complete! 🎉</ThemedText>
+          <ThemedText style={[styles.finalScore, { color: colors.primary.main }]}>Final Score: {score}</ThemedText>
           <View style={styles.gameOverActions}>
-            <TouchableOpacity style={styles.button} onPress={resetGame}>
-              <Text style={styles.buttonText}>Play Again</Text>
+            <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary.main }]} onPress={resetGame}>
+              <ThemedText style={styles.buttonText}>Play Again</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.button, styles.buttonOutline]}
+              style={[styles.button, styles.buttonOutline, { borderColor: colors.primary.main }]}
               onPress={() => router.back()}
             >
-              <Text style={[styles.buttonText, styles.buttonTextOutline]}>
-                Back to Games
-              </Text>
+              <ThemedText style={[styles.buttonText, { color: colors.primary.main }]}>
+                Exit
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -114,87 +119,92 @@ export default function PuzzleGameScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.score}>Score: {score}</Text>
-        <Text style={styles.progress}>
-          Puzzle {currentPuzzle + 1} of {PUZZLES.length}
-        </Text>
-      </View>
-
-      <View style={styles.puzzleCard}>
-        <Text style={styles.clue}>{puzzle.clue}</Text>
-
-        {showHint && (
-          <View style={styles.hintBox}>
-            <Text style={styles.hintText}>Hint: {puzzle.hint}</Text>
-          </View>
-        )}
-
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            value={answer}
-            onChangeText={setAnswer}
-            placeholder="Enter your answer"
-            autoCapitalize="characters"
-            onSubmitEditing={handleSubmit}
-          />
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitText}>Submit</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <ThemedText style={[styles.score, { color: colors.primary.main }]}>Score: {score}</ThemedText>
+          <ThemedText type="secondary" style={styles.progress}>
+            Puzzle {currentPuzzle + 1} / {PUZZLES.length}
+          </ThemedText>
         </View>
 
-        <TouchableOpacity
-          style={styles.hintButton}
-          onPress={() => setShowHint(true)}
-          disabled={showHint}
-        >
-          <Text style={[styles.hintButtonText, showHint && styles.hintButtonDisabled]}>
-            {showHint ? 'Hint Used' : '💡 Get Hint (-5 points)'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <View style={[styles.puzzleCard, { backgroundColor: isDark ? colors.background.secondary : '#FFF' }]}>
+          <ThemedText style={styles.clue}>{puzzle.clue}</ThemedText>
+
+          {showHint && (
+            <View style={[styles.hintBox, { backgroundColor: isDark ? 'rgba(157, 101, 49, 0.15)' : '#fef3c7' }]}>
+              <ThemedText style={[styles.hintText, { color: isDark ? colors.secondary.light : '#92400e' }]}>Hint: {puzzle.hint}</ThemedText>
+            </View>
+          )}
+
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[styles.input, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#cbd5f5', backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : '#fff', color: colors.text.primary }]}
+              value={answer}
+              onChangeText={setAnswer}
+              placeholder="Enter your answer"
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#94a3b8'}
+              autoCapitalize="characters"
+              onSubmitEditing={handleSubmit}
+            />
+            <TouchableOpacity style={[styles.submitButton, { backgroundColor: colors.primary.main }]} onPress={handleSubmit}>
+              <ThemedText style={styles.submitText}>Submit</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.hintButton}
+            onPress={() => setShowHint(true)}
+            disabled={showHint}
+          >
+            <ThemedText style={[styles.hintButtonText, { color: colors.primary.main }, showHint && styles.hintButtonDisabled]}>
+              {showHint ? 'Hint Used' : '💡 Get Hint (-5 points)'}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: '#f8fafc',
+    padding: 20,
+    gap: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 8,
   },
   score: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2563eb',
+    fontSize: 20,
+    fontWeight: '800',
   },
   progress: {
     fontSize: 14,
-    color: '#64748b',
+    fontWeight: '600',
   },
   puzzleCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
-    gap: 20,
+    gap: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   clue: {
     fontSize: 22,
-    fontWeight: '600',
-    color: '#0f172a',
+    fontWeight: '700',
     lineHeight: 30,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   hintBox: {
-    backgroundColor: '#fef3c7',
     borderRadius: 12,
     padding: 16,
     borderLeftWidth: 4,
@@ -202,7 +212,6 @@ const styles = StyleSheet.create({
   },
   hintText: {
     fontSize: 16,
-    color: '#92400e',
     fontStyle: 'italic',
   },
   inputRow: {
@@ -212,77 +221,70 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 2,
-    borderColor: '#cbd5f5',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     fontSize: 16,
-    backgroundColor: '#fff',
   },
   submitButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    borderRadius: 16,
     justifyContent: 'center',
   },
   submitText: {
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+    fontWeight: '700',
   },
   hintButton: {
     alignItems: 'center',
     paddingVertical: 12,
   },
   hintButtonText: {
-    color: '#2563eb',
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '700',
   },
   hintButtonDisabled: {
-    color: '#94a3b8',
+    opacity: 0.3,
   },
   gameOverCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    gap: 16,
+    gap: 20,
     marginTop: 100,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 4,
   },
   gameOverTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0f172a',
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -1,
+    textAlign: 'center',
   },
   finalScore: {
     fontSize: 24,
-    fontWeight: '600',
-    color: '#2563eb',
+    fontWeight: '700',
   },
   gameOverActions: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 8,
+    marginTop: 16,
   },
   button: {
-    backgroundColor: '#2563eb',
+    flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
   buttonOutline: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#2563eb',
-  },
-  buttonTextOutline: {
-    color: '#2563eb',
+    borderWidth: 2,
   },
 });
 

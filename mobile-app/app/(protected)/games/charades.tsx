@@ -9,8 +9,11 @@ import { useRouter } from 'expo-router';
 import { BIBLE_CHARADES } from '../../../src/features/games/data/games_data';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../src/config/colors';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
 export default function BibleCharadesScreen() {
+    const { colors: themeColors, isDark } = useTheme();
     const router = useRouter();
     const [currentIdx, setCurrentIdx] = useState(0);
     const [showPrompt, setShowPrompt] = useState(false);
@@ -23,52 +26,52 @@ export default function BibleCharadesScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: themeColors.primary.main }]}>
             <View style={styles.header}>
-                <Text style={styles.title}>Bible Charades</Text>
-                <Text style={styles.subtitle}>Act it out! Others must guess.</Text>
+                <ThemedText style={styles.title}>Bible Charades</ThemedText>
+                <ThemedText style={[styles.subtitle, { color: isDark ? themeColors.primary.light : themeColors.primary.lighter }]}>Act it out! Others must guess.</ThemedText>
             </View>
 
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: themeColors.background.secondary }]}>
                 {showPrompt ? (
                     <View style={styles.promptContainer}>
-                        <Text style={styles.category}>{BIBLE_CHARADES[currentIdx].category}</Text>
-                        <Text style={styles.promptText}>{BIBLE_CHARADES[currentIdx].title}</Text>
-                        <TouchableOpacity style={styles.button} onPress={nextPrompt}>
-                            <Text style={styles.buttonText}>NEXT PROMPT</Text>
+                        <ThemedText style={[styles.category, { color: themeColors.primary.main }]}>{BIBLE_CHARADES[currentIdx].category}</ThemedText>
+                        <ThemedText style={styles.promptText}>{BIBLE_CHARADES[currentIdx].title}</ThemedText>
+                        <TouchableOpacity style={[styles.button, { backgroundColor: themeColors.primary.main }]} onPress={nextPrompt}>
+                            <ThemedText style={styles.buttonText}>NEXT PROMPT</ThemedText>
                         </TouchableOpacity>
                     </View>
                 ) : (
                     <TouchableOpacity style={styles.revealBtn} onPress={() => setShowPrompt(true)}>
-                        <Text style={styles.revealText}>TAP TO REVEAL</Text>
+                        <ThemedText style={[styles.revealText, { color: themeColors.primary.main }]}>TAP TO REVEAL</ThemedText>
                     </TouchableOpacity>
                 )}
             </View>
 
             <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
-                <Text style={styles.closeBtnText}>BACK TO GAMES</Text>
+                <ThemedText style={[styles.closeBtnText, { color: isDark ? themeColors.primary.light : themeColors.primary.lighter }]}>BACK TO GAMES</ThemedText>
             </TouchableOpacity>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.primary.main, alignItems: 'center', padding: 24 },
+    container: { flex: 1, alignItems: 'center', padding: 24 },
     header: { marginTop: 60, alignItems: 'center' },
     title: { fontSize: 32, fontWeight: '900', color: '#fff' },
-    subtitle: { fontSize: 16, color: colors.primary.lighter, marginTop: 8 },
+    subtitle: { fontSize: 16, marginTop: 8 },
     card: {
-        width: '100%', height: 400, backgroundColor: '#fff',
+        width: '100%', height: 400,
         borderRadius: 30, marginTop: 60, justifyContent: 'center',
         alignItems: 'center', padding: 30, elevation: 15
     },
     promptContainer: { alignItems: 'center', width: '100%', gap: 20 },
-    category: { fontSize: 14, fontWeight: '800', color: colors.primary.main, letterSpacing: 2 },
-    promptText: { fontSize: 36, fontWeight: '900', color: '#111827', textAlign: 'center' },
+    category: { fontSize: 14, fontWeight: '800', letterSpacing: 2 },
+    promptText: { fontSize: 36, fontWeight: '900', textAlign: 'center' },
     revealBtn: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-    revealText: { fontSize: 24, fontWeight: '800', color: colors.primary.main },
-    button: { width: '100%', backgroundColor: colors.primary.main, padding: 20, borderRadius: 16, alignItems: 'center', marginTop: 30 },
+    revealText: { fontSize: 24, fontWeight: '800' },
+    button: { width: '100%', padding: 20, borderRadius: 16, alignItems: 'center', marginTop: 30 },
     buttonText: { color: '#fff', fontWeight: '800' },
     closeBtn: { marginTop: 'auto', marginBottom: 40 },
-    closeBtnText: { color: colors.primary.lighter, fontWeight: '700' }
+    closeBtnText: { fontWeight: '700' }
 });

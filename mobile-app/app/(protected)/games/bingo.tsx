@@ -11,12 +11,15 @@ import { useGameStore } from '../../../src/features/games/state/useGameStore';
 import { FAITH_BINGO_TILES } from '../../../src/features/games/data/games_data';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../src/config/colors';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
 const GRID_SIZE = 4; // 4x4 Bingo
 const { width } = Dimensions.get('window');
 const TILE_SIZE = (width - 80) / GRID_SIZE;
 
 export default function FaithBingoScreen() {
+    const { colors: themeColors, isDark } = useTheme();
     const router = useRouter();
     const addScore = useGameStore((state) => state.addScore);
     const [board, setBoard] = useState<Array<{ text: string; marked: boolean }>>([]);
@@ -73,33 +76,40 @@ export default function FaithBingoScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Faith Bingo</Text>
-            <Text style={styles.subtitle}>Mark 4 in a row to win!</Text>
+        <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
+            <ThemedText style={[styles.title, { color: themeColors.primary.main }]}>Faith Bingo</ThemedText>
+            <ThemedText style={styles.subtitle}>Mark 4 in a row to win!</ThemedText>
 
             <View style={styles.grid}>
                 {board.map((tile, i) => (
                     <TouchableOpacity
                         key={i}
-                        style={[styles.tile, tile.marked && styles.tileMarked]}
+                        style={[
+                            styles.tile,
+                            { backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: themeColors.border.subtle },
+                            tile.marked && { backgroundColor: themeColors.primary.main, borderColor: themeColors.primary.dark }
+                        ]}
                         onPress={() => toggleTile(i)}
                     >
-                        <Text style={[styles.tileText, tile.marked && styles.tileTextMarked]}>
+                        <ThemedText style={[
+                            styles.tileText,
+                            tile.marked && styles.tileTextMarked
+                        ]}>
                             {tile.text}
-                        </Text>
+                        </ThemedText>
                     </TouchableOpacity>
                 ))}
             </View>
 
             {gameOver && (
-                <View style={styles.winContainer}>
-                    <Text style={styles.winText}>BINGO! 🎉</Text>
+                <View style={[styles.winContainer, { backgroundColor: isDark ? 'rgba(30,41,59,0.95)' : 'rgba(255,255,255,0.95)', borderColor: themeColors.primary.main }]}>
+                    <ThemedText style={[styles.winText, { color: themeColors.primary.main }]}>BINGO! 🎉</ThemedText>
                     <View style={styles.actions}>
-                        <TouchableOpacity style={styles.button} onPress={generateBoard}>
-                            <Text style={styles.buttonText}>NEW CARD</Text>
+                        <TouchableOpacity style={[styles.button, { backgroundColor: themeColors.primary.main }]} onPress={generateBoard}>
+                            <ThemedText style={styles.buttonText}>NEW CARD</ThemedText>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => router.back()}>
-                            <Text style={styles.buttonTextOutline}>GAMES</Text>
+                        <TouchableOpacity style={[styles.button, styles.buttonOutline, { borderColor: themeColors.primary.main }]} onPress={() => router.back()}>
+                            <ThemedText style={[styles.buttonText, { color: themeColors.primary.main }]}>GAMES</ThemedText>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -107,7 +117,7 @@ export default function FaithBingoScreen() {
 
             {!gameOver && (
                 <TouchableOpacity style={styles.resetBtn} onPress={generateBoard}>
-                    <Text style={styles.resetBtnText}>Refresh Card</Text>
+                    <ThemedText style={styles.resetBtnText}>Refresh Card</ThemedText>
                 </TouchableOpacity>
             )}
         </View>
@@ -115,9 +125,9 @@ export default function FaithBingoScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 24, backgroundColor: '#f8fafc', alignItems: 'center' },
-    title: { fontSize: 28, fontWeight: '800', color: colors.primary.main, marginTop: 40 },
-    subtitle: { fontSize: 16, color: '#64748b', marginBottom: 30 },
+    container: { flex: 1, padding: 24, alignItems: 'center' },
+    title: { fontSize: 28, fontWeight: '800', marginTop: 40 },
+    subtitle: { fontSize: 16, opacity: 0.6, marginBottom: 30 },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -128,36 +138,28 @@ const styles = StyleSheet.create({
     tile: {
         width: TILE_SIZE,
         height: TILE_SIZE,
-        backgroundColor: '#fff',
         borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 2,
         padding: 4,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
-    },
-    tileMarked: {
-        backgroundColor: colors.primary.main,
-        borderColor: colors.primary.dark,
     },
     tileText: {
         fontSize: 10,
         fontWeight: '700',
-        color: '#334155',
         textAlign: 'center',
         textTransform: 'uppercase'
     },
     tileTextMarked: {
         color: '#fff',
     },
-    winContainer: { position: 'absolute', top: '40%', backgroundColor: 'rgba(255,255,255,0.95)', padding: 40, borderRadius: 30, alignItems: 'center', elevation: 10, borderWeight: 2, borderColor: colors.primary.main },
-    winText: { fontSize: 48, fontWeight: '900', color: colors.primary.main, marginBottom: 20 },
+    winContainer: { position: 'absolute', top: '40%', padding: 40, borderRadius: 30, alignItems: 'center', elevation: 10, borderWidth: 2 },
+    winText: { fontSize: 48, fontWeight: '900', marginBottom: 20 },
     actions: { gap: 12, width: 200 },
-    button: { backgroundColor: colors.primary.main, padding: 16, borderRadius: 12, alignItems: 'center' },
+    button: { padding: 16, borderRadius: 12, alignItems: 'center' },
     buttonText: { color: '#fff', fontWeight: '800' },
-    buttonOutline: { backgroundColor: 'transparent', borderWidth: 2, borderColor: colors.primary.main },
-    buttonTextOutline: { color: colors.primary.main, fontWeight: '800' },
+    buttonOutline: { backgroundColor: 'transparent', borderWidth: 2 },
     resetBtn: { marginTop: 40 },
-    resetBtnText: { color: '#94a3b8', fontWeight: '600' }
+    resetBtnText: { opacity: 0.5, fontWeight: '600' }
 });

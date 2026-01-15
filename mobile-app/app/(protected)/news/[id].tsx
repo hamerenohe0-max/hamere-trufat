@@ -9,8 +9,11 @@ import {
 } from '../../../src/features/news/hooks/useNews';
 import { NewsDetailContent } from '../../../src/features/news/components/NewsDetailContent';
 import { colors } from '../../../src/config/colors';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
 export default function NewsDetailScreen() {
+  const { colors: themeColors } = useTheme();
   const params = useLocalSearchParams<{ id: string }>();
   const newsQuery = useNewsDetail(params.id);
   const reactMutation = useReactToNews(params.id);
@@ -19,16 +22,16 @@ export default function NewsDetailScreen() {
 
   if (newsQuery.isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary.main} />
+      <View style={[styles.center, { backgroundColor: themeColors.background.primary }]}>
+        <ActivityIndicator size="large" color={themeColors.primary.main} />
       </View>
     );
   }
 
   if (!newsQuery.data) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.emptyText}>News article not found.</Text>
+      <View style={[styles.center, { backgroundColor: themeColors.background.primary }]}>
+        <ThemedText style={styles.emptyText}>News article not found.</ThemedText>
       </View>
     );
   }
@@ -36,14 +39,14 @@ export default function NewsDetailScreen() {
   const news = newsQuery.data;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background.primary }]} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerStyle={[styles.container, { backgroundColor: themeColors.background.primary }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={true}
         >
@@ -57,11 +60,11 @@ export default function NewsDetailScreen() {
 
           {news.related?.length ? (
             <View style={{ marginTop: 24 }}>
-              <Text style={styles.relatedHeading}>Related news</Text>
+              <ThemedText style={styles.relatedHeading}>Related news</ThemedText>
               {news.related.map((related) => (
                 <Link key={related.id} href={`/(protected)/news/${related.id}`} asChild>
                   <TouchableOpacity style={styles.relatedItem}>
-                    <Text style={styles.relatedItemText}>• {related.title}</Text>
+                    <ThemedText style={[styles.relatedItemText, { color: themeColors.primary.main }]}>• {related.title}</ThemedText>
                   </TouchableOpacity>
                 </Link>
               ))}
@@ -107,7 +110,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   relatedItemText: {
-    color: colors.primary.main,
     fontSize: 14,
   },
 });

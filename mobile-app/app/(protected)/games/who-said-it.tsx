@@ -11,8 +11,11 @@ import { useGameStore } from '../../../src/features/games/state/useGameStore';
 import { WHO_SAID_IT } from '../../../src/features/games/data/games_data';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../src/config/colors';
+import { useTheme } from '../../../src/components/ThemeProvider';
+import { ThemedText } from '../../../src/components/ThemedText';
 
 export default function WhoSaidItScreen() {
+    const { colors: themeColors, isDark } = useTheme();
     const router = useRouter();
     const addScore = useGameStore((state) => state.addScore);
     const [currentIdx, setCurrentIdx] = useState(0);
@@ -64,22 +67,22 @@ export default function WhoSaidItScreen() {
 
     if (gameOver) {
         return (
-            <View style={styles.container}>
-                <View style={styles.gameOverCard}>
-                    <Text style={styles.gameOverTitle}>Well Done! 🗣️</Text>
-                    <Text style={styles.finalScore}>Final Score: {score}</Text>
-                    <Text style={styles.finalScoreText}>
+            <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
+                <View style={[styles.gameOverCard, { backgroundColor: themeColors.background.secondary }]}>
+                    <ThemedText style={styles.gameOverTitle}>Well Done! 🗣️</ThemedText>
+                    <ThemedText style={[styles.finalScore, { color: themeColors.primary.main }]}>Final Score: {score}</ThemedText>
+                    <ThemedText style={styles.finalScoreText}>
                         {score >= 45 ? 'True Prophet! 🎉' : 'Keep reading! 📖'}
-                    </Text>
+                    </ThemedText>
                     <View style={styles.gameOverActions}>
-                        <TouchableOpacity style={styles.button} onPress={resetGame}>
-                            <Text style={styles.buttonText}>Play Again</Text>
+                        <TouchableOpacity style={[styles.button, { backgroundColor: themeColors.primary.main }]} onPress={resetGame}>
+                            <ThemedText style={styles.buttonText}>Play Again</ThemedText>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.button, styles.buttonOutline]}
+                            style={[styles.button, styles.buttonOutline, { borderColor: themeColors.primary.main }]}
                             onPress={() => router.back()}
                         >
-                            <Text style={[styles.buttonText, styles.buttonTextOutline]}>Back</Text>
+                            <ThemedText style={[styles.buttonText, { color: themeColors.primary.main }]}>Back</ThemedText>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -88,16 +91,16 @@ export default function WhoSaidItScreen() {
     }
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: themeColors.background.primary }]}>
             <View style={styles.header}>
-                <Text style={styles.score}>Score: {score}</Text>
-                <Text style={styles.progress}>Quote {currentIdx + 1} of {WHO_SAID_IT.length}</Text>
+                <ThemedText style={[styles.score, { color: themeColors.primary.main }]}>Score: {score}</ThemedText>
+                <ThemedText style={styles.progress}>Quote {currentIdx + 1} of {WHO_SAID_IT.length}</ThemedText>
             </View>
 
-            <View style={styles.card}>
-                <Text style={styles.quoteTitle}>Who said this?</Text>
-                <View style={styles.quoteContainer}>
-                    <Text style={styles.quoteText}>"{question.quote}"</Text>
+            <View style={[styles.card, { backgroundColor: themeColors.background.secondary }]}>
+                <ThemedText style={styles.quoteTitle}>Who said this?</ThemedText>
+                <View style={[styles.quoteContainer, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                    <ThemedText style={styles.quoteText}>"{question.quote}"</ThemedText>
                 </View>
 
                 <View style={styles.options}>
@@ -112,29 +115,30 @@ export default function WhoSaidItScreen() {
                                 key={index}
                                 style={[
                                     styles.option,
-                                    isSelected && styles.optionSelected,
-                                    showCorrect && styles.optionCorrect,
-                                    showWrong && styles.optionWrong,
+                                    { backgroundColor: isDark ? '#1e293b' : '#f8fafc' },
+                                    isSelected && { borderColor: themeColors.primary.main, backgroundColor: themeColors.primary.main + '20' },
+                                    showCorrect && { borderColor: '#10b981', backgroundColor: isDark ? '#064e3b' : '#d1fae5' },
+                                    showWrong && { borderColor: '#ef4444', backgroundColor: isDark ? '#7f1d1d' : '#fee2e2' },
                                 ]}
                                 onPress={() => handleAnswer(index)}
                                 disabled={selectedAnswer !== null}
                             >
-                                <Text style={[
+                                <ThemedText style={[
                                     styles.optionText,
-                                    isSelected && styles.optionTextSelected,
-                                    showCorrect && styles.optionTextCorrect,
-                                    showWrong && styles.optionTextWrong,
+                                    isSelected && { color: themeColors.primary.main, fontWeight: '700' },
+                                    showCorrect && { color: '#10b981', fontWeight: '700' },
+                                    showWrong && { color: '#ef4444', fontWeight: '700' },
                                 ]}>
                                     {option}
-                                </Text>
-                                {showResult && isCorrect && <Text style={{ color: '#10b981' }}>✓</Text>}
+                                </ThemedText>
+                                {showResult && isCorrect && <ThemedText style={{ color: '#10b981' }}>✓</ThemedText>}
                             </TouchableOpacity>
                         );
                     })}
                 </View>
 
                 {showResult && (
-                    <Text style={styles.referenceText}>Reference: {question.reference}</Text>
+                    <ThemedText style={styles.referenceText}>Reference: {question.reference}</ThemedText>
                 )}
             </View>
         </ScrollView>
@@ -142,34 +146,27 @@ export default function WhoSaidItScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 24, backgroundColor: '#f8fafc' },
+    container: { flex: 1, padding: 24 },
     header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-    score: { fontSize: 20, fontWeight: '700', color: colors.primary.main },
-    progress: { fontSize: 14, color: '#64748b' },
-    card: { backgroundColor: '#fff', borderRadius: 20, padding: 24, gap: 20, elevation: 4 },
-    quoteTitle: { fontSize: 16, color: '#64748b', fontWeight: '600', textAlign: 'center' },
-    quoteContainer: { padding: 20, backgroundColor: '#f1f5f9', borderRadius: 16 },
-    quoteText: { fontSize: 20, fontWeight: '700', color: '#0f172a', textAlign: 'center', fontStyle: 'italic' },
+    score: { fontSize: 20, fontWeight: '700' },
+    progress: { fontSize: 14, opacity: 0.6 },
+    card: { borderRadius: 20, padding: 24, gap: 20, elevation: 4 },
+    quoteTitle: { fontSize: 16, opacity: 0.6, fontWeight: '600', textAlign: 'center' },
+    quoteContainer: { padding: 20, borderRadius: 16 },
+    quoteText: { fontSize: 20, fontWeight: '700', textAlign: 'center', fontStyle: 'italic' },
     options: { gap: 12 },
     option: {
-        padding: 16, borderRadius: 12, backgroundColor: '#f8fafc',
+        padding: 16, borderRadius: 12,
         flexDirection: 'row', justifyContent: 'space-between', borderWidth: 2, borderColor: 'transparent'
     },
-    optionSelected: { borderColor: colors.primary.main, backgroundColor: colors.primary.lighter + '20' },
-    optionCorrect: { borderColor: '#10b981', backgroundColor: '#d1fae5' },
-    optionWrong: { borderColor: '#ef4444', backgroundColor: '#fee2e2' },
-    optionText: { fontSize: 16, color: '#1f2937' },
-    optionTextSelected: { fontWeight: '700', color: colors.primary.main },
-    optionTextCorrect: { fontWeight: '700', color: '#059669' },
-    optionTextWrong: { fontWeight: '700', color: '#dc2626' },
-    referenceText: { textAlign: 'center', color: '#64748b', marginTop: 10, fontSize: 12 },
-    gameOverCard: { backgroundColor: '#fff', borderRadius: 20, padding: 32, alignItems: 'center', gap: 16, marginTop: 100 },
+    optionText: { fontSize: 16 },
+    referenceText: { textAlign: 'center', marginTop: 10, fontSize: 12, opacity: 0.5 },
+    gameOverCard: { borderRadius: 20, padding: 32, alignItems: 'center', gap: 16, marginTop: 100 },
     gameOverTitle: { fontSize: 28, fontWeight: '700' },
-    finalScore: { fontSize: 24, fontWeight: '600', color: colors.primary.main },
-    finalScoreText: { fontSize: 18, color: '#475569' },
+    finalScore: { fontSize: 24, fontWeight: '600' },
+    finalScoreText: { fontSize: 18, opacity: 0.8 },
     gameOverActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-    button: { backgroundColor: colors.primary.main, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+    button: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
     buttonText: { color: '#fff', fontWeight: '600' },
-    buttonOutline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary.main },
-    buttonTextOutline: { color: colors.primary.main },
+    buttonOutline: { backgroundColor: 'transparent', borderWidth: 1 },
 });

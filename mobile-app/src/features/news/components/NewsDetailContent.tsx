@@ -6,6 +6,8 @@ import * as Haptics from 'expo-haptics';
 import { NewsImageGallery } from './NewsImageGallery';
 import { colors } from '../../../config/colors';
 import { formatSimpleDate } from '../../../utils/dateFormat';
+import { useTheme } from '../../../components/ThemeProvider';
+import { ThemedText } from '../../../components/ThemedText';
 
 interface Props {
   news: NewsDetail;
@@ -22,6 +24,7 @@ const LANGUAGES = [
 
 export const NewsDetailContent = memo(
   ({ news, onReact, onBookmark, onTranslate }: Props) => {
+    const { colors: themeColors, isDark } = useTheme();
     const { toggleBookmark } = useNewsStore();
     const userReaction = news.reactions?.userReaction ?? null;
     const bookmarked = news.bookmarked ?? false;
@@ -39,11 +42,11 @@ export const NewsDetailContent = memo(
     // Get images from news item (images array or fallback to coverImage)
     // Filter out any empty/null values
     let newsImages: string[] = [];
-    
+
     if (news.images && Array.isArray(news.images) && news.images.length > 0) {
       newsImages = news.images.filter((img) => img && img.trim().length > 0);
     }
-    
+
     // Fallback to coverImage if no images in array
     if (newsImages.length === 0 && news['coverImage'] && news['coverImage'].trim().length > 0) {
       newsImages = [news['coverImage']];
@@ -51,80 +54,80 @@ export const NewsDetailContent = memo(
 
     return (
       <View style={{ gap: 16 }}>
-        <Text style={styles.title}>{news.title}</Text>
-        <Text style={styles.meta}>{formatSimpleDate(news.publishedAt || news.createdAt)}</Text>
-        
+        <ThemedText style={styles.title}>{news.title}</ThemedText>
+        <ThemedText style={styles.meta}>{formatSimpleDate(news.publishedAt || news.createdAt)}</ThemedText>
+
         {newsImages.length > 0 && (
           <View style={styles.imageContainer}>
             <NewsImageGallery images={newsImages} height={400} />
           </View>
         )}
-        
-        <Text style={styles.body}>{news.translation?.body ?? news.content}</Text>
+
+        <ThemedText style={styles.body}>{news.translation?.body ?? news.content}</ThemedText>
 
         <View style={styles.tags}>
           {news.tags?.map((tag) => (
-            <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>#{tag}</Text>
+            <View key={tag} style={[styles.tag, { backgroundColor: themeColors.primary.main + '20' }]}>
+              <ThemedText style={[styles.tagText, { color: themeColors.primary.main }]}>#{tag}</ThemedText>
             </View>
           ))}
         </View>
 
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.reaction, userReaction === 'like' && styles.reactionActive]}
+            style={[styles.reaction, { borderColor: themeColors.border.subtle }, userReaction === 'like' && { backgroundColor: themeColors.primary.main }]}
             onPress={() => {
               onReact('like');
             }}
           >
-            <Text style={styles.reactionText}>👍 {news.reactions?.likes || 0}</Text>
+            <ThemedText style={[styles.reactionText, { color: userReaction === 'like' ? '#fff' : themeColors.text.secondary }]}>👍 {news.reactions?.likes || 0}</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.reaction, userReaction === 'dislike' && styles.reactionActive]}
+            style={[styles.reaction, { borderColor: themeColors.border.subtle }, userReaction === 'dislike' && { backgroundColor: themeColors.primary.main }]}
             onPress={() => {
               onReact('dislike');
             }}
           >
-            <Text style={styles.reactionText}>👎 {news.reactions?.dislikes || 0}</Text>
+            <ThemedText style={[styles.reactionText, { color: userReaction === 'dislike' ? '#fff' : themeColors.text.secondary }]}>👎 {news.reactions?.dislikes || 0}</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.reaction} onPress={handleShare}>
-            <Text style={styles.reactionText}>Share</Text>
+          <TouchableOpacity style={[styles.reaction, { borderColor: themeColors.border.subtle }]} onPress={handleShare}>
+            <ThemedText style={[styles.reactionText, { color: themeColors.text.secondary }]}>Share</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.reaction}
+            style={[styles.reaction, { borderColor: themeColors.border.subtle }]}
             onPress={() => {
               toggleBookmark(news.id, news.title);
               onBookmark();
               Haptics.selectionAsync();
             }}
           >
-            <Text style={styles.reactionText}>
+            <ThemedText style={[styles.reactionText, { color: themeColors.text.secondary }]}>
               {bookmarked ? '★ Bookmarked' : '☆ Bookmark'}
-            </Text>
+            </ThemedText>
           </TouchableOpacity>
         </View>
 
         <View style={styles.translateRow}>
-          <Text style={styles.meta}>
+          <ThemedText style={styles.meta}>
             {translationLanguage
               ? `Translated to ${translationLanguage}`
               : 'Translate article'}
-          </Text>
+          </ThemedText>
           <View style={styles.langButtons}>
             {LANGUAGES.map((lang) => (
               <TouchableOpacity
                 key={lang.code}
-                style={styles.langButton}
+                style={[styles.langButton, { backgroundColor: themeColors.background.secondary }]}
                 onPress={() => onTranslate(lang.code)}
               >
-                <Text
+                <ThemedText
                   style={[
                     styles.langLabel,
-                    translationLanguage === lang.code && styles.langLabelActive,
+                    translationLanguage === lang.code && { color: themeColors.primary.main, fontWeight: '700' },
                   ]}
                 >
                   {lang.label}
-                </Text>
+                </ThemedText>
               </TouchableOpacity>
             ))}
           </View>
@@ -139,13 +142,12 @@ const styles = {
   title: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: '#0f172a',
     marginBottom: 8,
   },
   meta: {
-    color: '#94a3b8',
     fontSize: 14,
     marginBottom: 16,
+    opacity: 0.6,
   },
   imageContainer: {
     marginVertical: 0,
@@ -153,7 +155,6 @@ const styles = {
   body: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#1f2937',
     marginTop: 8,
   },
   tags: {
@@ -162,13 +163,11 @@ const styles = {
     gap: 8,
   },
   tag: {
-    backgroundColor: colors.primary.lighter + '20', // 20% opacity
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   tagText: {
-    color: colors.primary.dark,
     fontSize: 12,
   },
   actions: {
@@ -178,16 +177,11 @@ const styles = {
   },
   reaction: {
     borderWidth: 1,
-    borderColor: '#cbd5f5',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  reactionActive: {
-    backgroundColor: colors.primary.main,
-  },
   reactionText: {
-    color: colors.primary.darkest,
     fontWeight: '600' as const,
   },
   translateRow: {
@@ -200,14 +194,9 @@ const styles = {
   langButton: {
     padding: 6,
     borderRadius: 10,
-    backgroundColor: '#f8fafc',
   },
   langLabel: {
-    color: '#475569',
-  },
-  langLabelActive: {
-    color: colors.primary.main,
-    fontWeight: '600' as const,
+    fontSize: 14,
   },
 };
 
