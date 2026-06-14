@@ -3,9 +3,11 @@ import { ProgressService } from './services/progress.service';
 import { ProgressController } from './controllers/progress.controller';
 import { PdfService } from './services/pdf.service';
 import { MediaModule } from '../media/media.module';
+import { SupabaseModule } from '../../database/supabase.module';
 
 @Module({
   imports: [
+    SupabaseModule,
     MediaModule,
   ],
   controllers: [ProgressController],

@@ -58,5 +58,11 @@ export class ProgressController {
   toggleLike(@Param('id') id: string, @CurrentUser() user: any) {
     return this.progressService.toggleLike(id, user.id);
   }
+
+  @Post(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  addComment(@Param('id') id: string, @Body() body: { body: string }, @CurrentUser() user: any) {
+    return this.progressService.addComment(id, user.id, body.body);
+  }
 }
 

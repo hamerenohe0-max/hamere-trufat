@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { SupabaseService } from '../../../common/supabase/supabase.service';
+import { SupabaseService } from '../../../database/supabase.service';
 
 @Injectable()
 export class FeastsService {

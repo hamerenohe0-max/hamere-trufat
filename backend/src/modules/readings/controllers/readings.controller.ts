@@ -40,6 +40,11 @@ export class ReadingsController {
     return this.readingsService.findByDate(dateObj) || this.readingsService.findClosest(dateObj);
   }
 
+  @Post('date/:date/reminder')
+  toggleReminder(@Body() body: { enabled: boolean }) {
+    return { reminderEnabled: !!body.enabled };
+  }
+
   @Get('today')
   getToday() {
     const today = new Date();

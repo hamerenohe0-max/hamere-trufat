@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { SupabaseService } from '../../../common/supabase/supabase.service';
-import { Database } from '../../../common/supabase/types';
+import { SupabaseService } from '../../../database/supabase.service';
+import { Database } from '../../../database/types';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
@@ -290,6 +290,25 @@ export class UsersService {
 
     if (error || !data) throw new NotFoundException('User not found');
     return data;
+  }
+
+  async delete(userId: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const { error } = await this.supabase.client
+      .from('users')
+      .update({
+        status: 'suspended',
+        refresh_token_hash: null,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 
   async update(userId: string, updates: Database['public']['Tables']['users']['Update']): Promise<any> {

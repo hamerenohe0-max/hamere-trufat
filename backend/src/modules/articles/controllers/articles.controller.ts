@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { OptionalJwtAuthGuard } from '../../../common/guards/optional-jwt-auth.guard';
 
 @Controller('articles')
 export class ArticlesController {
@@ -18,6 +19,7 @@ export class ArticlesController {
   }
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   findAll(@Query() query: any, @CurrentUser() user?: any) {
     // For authenticated admin/publisher, show all articles (including drafts)
     // For public/unauthenticated, only show published articles
@@ -64,6 +66,7 @@ export class ArticlesController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   findOne(@Param('id') id: string, @CurrentUser() user?: any) {
     return this.articlesService.findOne(id, user?.id);
   }

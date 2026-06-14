@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
-import { SupabaseService } from '../../../common/supabase/supabase.service';
+import { SupabaseService } from '../../../database/supabase.service';
 import { CreateArticleDto } from '../dto/create-article.dto';
 import slugify from 'slugify';
 

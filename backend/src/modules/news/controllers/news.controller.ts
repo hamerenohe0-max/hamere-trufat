@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { OptionalJwtAuthGuard } from '../../../common/guards/optional-jwt-auth.guard';
 
 @Controller('news')
 export class NewsController {
@@ -29,6 +30,7 @@ export class NewsController {
   }
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   findAll(@Query() query: any) {
     // For public endpoints, default to published status if not specified
     const status = query.status || 'published';
@@ -41,6 +43,7 @@ export class NewsController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   findOne(@Param('id') id: string, @CurrentUser() user?: any) {
     return this.newsService.findOne(id, user?.id);
   }

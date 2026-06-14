@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { SupabaseService } from '../../../common/supabase/supabase.service';
+import { SupabaseService } from '../../../database/supabase.service';
 import { v2 as cloudinary } from 'cloudinary';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -86,7 +86,7 @@ export class MediaService {
     });
   }
 
-  async deleteFile(id: string, userId: string): Promise<void> {
+  async deleteFile(id: string, userId: string, userRole?: string): Promise<void> {
     if (!this.cloudinaryConfig) {
       throw new InternalServerErrorException(
         'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your environment variables.'
@@ -103,7 +103,7 @@ export class MediaService {
       throw new Error('Media not found');
     }
 
-    if (media.uploaded_by !== userId) {
+    if (media.uploaded_by !== userId && userRole !== 'admin') {
       throw new Error('You can only delete your own media');
     }
 

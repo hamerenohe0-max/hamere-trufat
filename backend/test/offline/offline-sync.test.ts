@@ -2,24 +2,18 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 
 describe('Offline Sync Tests', () => {
   let app: INestApplication;
-  let mongoServer: MongoMemoryServer;
   let authToken: string;
   let userId: string;
 
   beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
-    const mongoUri = mongoServer.getUri();
+    process.env.SUPABASE_URL ??= 'http://localhost:54321';
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test-service-role-key';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(mongoUri),
-        AppModule,
-      ],
+      imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -49,7 +43,6 @@ describe('Offline Sync Tests', () => {
 
   afterAll(async () => {
     await app.close();
-    await mongoServer.stop();
   });
 
   describe('Cache Management', () => {

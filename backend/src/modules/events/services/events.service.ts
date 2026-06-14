@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { SupabaseService } from '../../../common/supabase/supabase.service';
-import { Database } from '../../../common/supabase/types';
+import { SupabaseService } from '../../../database/supabase.service';
+import { Database } from '../../../database/types';
 
 type EventInsert = Database['public']['Tables']['events']['Insert'];
 

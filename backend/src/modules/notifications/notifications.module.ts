@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { NotificationsService } from './services/notifications.service';
 import { NotificationsController } from './controllers/notifications.controller';
-import { UsersModule } from '../users.module';
+import { UsersModule } from '../users/users.module';
+import { SupabaseModule } from '../../database/supabase.module';
 
 @Module({
   imports: [
+    SupabaseModule,
     UsersModule,
   ],
   controllers: [NotificationsController],

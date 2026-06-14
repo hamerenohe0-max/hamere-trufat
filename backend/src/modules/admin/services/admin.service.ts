@@ -83,5 +83,81 @@ export class AdminService {
       },
     };
   }
+
+  async getAnalytics(filters?: { startDate?: string; endDate?: string }) {
+    const [news, articles, events, feasts] = await Promise.all([
+      this.newsService.findAll({ limit: 100 }),
+      this.articlesService.findAll({ limit: 100 }),
+      this.eventsService.findAll({ limit: 100 }),
+      this.feastsService.findAll({ limit: 100 }),
+    ]);
+
+    const content = [
+      ...news.items.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        type: 'news' as const,
+        views: item.views || 0,
+        engagement: (item.likes || 0) + (item.dislikes || 0),
+        createdAt: item.created_at,
+      })),
+      ...articles.items.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        type: 'article' as const,
+        views: item.views || 0,
+        engagement: (item.likes || 0) + (item.dislikes || 0),
+        createdAt: item.created_at,
+      })),
+      ...events.items.map((item: any) => ({
+        id: item.id,
+        title: item.name,
+        type: 'event' as const,
+        views: item.views || 0,
+        engagement: item.reminder_enabled ? 1 : 0,
+        createdAt: item.created_at,
+      })),
+      ...feasts.items.map((item: any) => ({
+        id: item.id,
+        title: item.name,
+        type: 'feast' as const,
+        views: item.views || 0,
+        engagement: item.reminder_enabled ? 1 : 0,
+        createdAt: item.created_at,
+      })),
+    ];
+
+    const start = filters?.startDate ? new Date(filters.startDate) : undefined;
+    const end = filters?.endDate ? new Date(filters.endDate) : undefined;
+    const filtered = content.filter((item) => {
+      if (!item.createdAt) return true;
+      const createdAt = new Date(item.createdAt);
+      if (start && createdAt < start) return false;
+      if (end && createdAt > end) return false;
+      return true;
+    });
+
+    const viewsByDate = new Map<string, number>();
+    const engagementByType = new Map<string, number>();
+
+    for (const item of filtered) {
+      const date = item.createdAt
+        ? new Date(item.createdAt).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      viewsByDate.set(date, (viewsByDate.get(date) || 0) + item.views);
+      engagementByType.set(item.type, (engagementByType.get(item.type) || 0) + item.engagement);
+    }
+
+    return {
+      totalViews: filtered.reduce((sum, item) => sum + item.views, 0),
+      totalEngagement: filtered.reduce((sum, item) => sum + item.engagement, 0),
+      topContent: filtered
+        .sort((a, b) => b.views + b.engagement - (a.views + a.engagement))
+        .slice(0, 10)
+        .map(({ createdAt, ...item }) => item),
+      viewsByDate: Array.from(viewsByDate.entries()).map(([date, views]) => ({ date, views })),
+      engagementByType: Array.from(engagementByType.entries()).map(([type, count]) => ({ type, count })),
+    };
+  }
 }
 

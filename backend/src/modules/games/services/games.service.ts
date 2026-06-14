@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { SupabaseService } from '../../../common/supabase/supabase.service';
-import { Database } from '../../../common/supabase/types';
+import { SupabaseService } from '../../../database/supabase.service';
+import { Database } from '../../../database/types';
 
 type GameScoreInsert = Database['public']['Tables']['game_scores']['Insert'];
 

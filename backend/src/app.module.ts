@@ -6,10 +6,10 @@ import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/logger/winston.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuthModule } from './modules/auth.module';
-import { SubmissionsModule } from './modules/submissions.module';
-import { AssignmentsModule } from './modules/assignments.module';
-import { UsersModule } from './modules/users.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { SubmissionsModule } from './modules/submissions/submissions.module';
+import { AssignmentsModule } from './modules/assignments/assignments.module';
+import { UsersModule } from './modules/users/users.module';
 import { NewsModule } from './modules/news/news.module';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { EventsModule } from './modules/events/events.module';
@@ -23,7 +23,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { MediaModule } from './modules/media/media.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { DailyReadingsModule } from './modules/daily-readings/daily-readings.module';
-import { SupabaseModule } from './common/supabase/supabase.module';
+import { SupabaseModule } from './database/supabase.module';
 
 @Module({
   imports: [

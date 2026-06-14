@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { SupabaseService } from '../../../common/supabase/supabase.service';
+import { SupabaseService } from '../../../database/supabase.service';
 
 @Injectable()
 export class ProgressService {
@@ -113,6 +113,22 @@ export class ProgressService {
       .single();
       
     return data;
+  }
+
+  async addComment(id: string, userId: string, body: string): Promise<{ success: boolean }> {
+    if (!body?.trim()) {
+      return { success: true };
+    }
+
+    const progress = await this.findOne(id);
+    const commentsCount = (progress.comments_count || 0) + 1;
+
+    await this.supabase.client
+      .from('progress_reports')
+      .update({ comments_count: commentsCount })
+      .eq('id', id);
+
+    return { success: true };
   }
 }
 

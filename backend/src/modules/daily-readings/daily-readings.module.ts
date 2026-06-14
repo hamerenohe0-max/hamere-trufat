@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DailyReadingsController } from './daily-readings.controller';
 import { DailyReadingsService } from './daily-readings.service';
-import { SupabaseModule } from '../../common/supabase/supabase.module';
+import { SupabaseModule } from '../../database/supabase.module';
 
 @Module({
     imports: [SupabaseModule],

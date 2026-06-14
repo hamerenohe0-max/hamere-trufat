@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AssignmentsService } from './assignments/assignments.service';
-import { AssignmentsController } from './assignments/assignments.controller';
+import { AssignmentsService } from './assignments.service';
+import { AssignmentsController } from './assignments.controller';
 
 @Module({
   providers: [AssignmentsService],
