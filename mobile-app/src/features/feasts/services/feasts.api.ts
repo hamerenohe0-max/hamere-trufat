@@ -1,57 +1,48 @@
 import { apiFetch } from '../../../services/api';
 import { Feast } from '../../../types/models';
-import { mockFeasts } from '../../../data/mock-feasts';
-
-// Mock feasts API - will be replaced with real API later
-const mockReminders: Record<string, boolean> = {};
 
 export const feastsApi = {
   list: async (): Promise<Feast[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return mockFeasts.map((f) => ({
-      ...f,
-      reminderEnabled: mockReminders[f.id] ?? false,
-    }));
+    const response = await apiFetch<{ items: any[] }>('/feasts', {
+      auth: false,
+    });
+    return response.items.map(mapFeastFromBackend);
   },
-  detail: async (id: string): Promise<Feast> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const feast = mockFeasts.find((f) => f.id === id);
-    if (!feast) throw new Error('Feast not found');
 
-    // Add mock data for biography, traditions, readings, prayers if not present
-    return {
-      ...feast,
-      biography:
-        feast.biography ||
-        `This is a brief biography about ${feast.name}, an important feast in the Ethiopian Orthodox calendar.`,
-      traditions:
-        feast.traditions || [
-          'Special prayers and hymns',
-          'Community gatherings',
-          'Traditional celebrations',
-        ],
-      readings:
-        feast.readings || [
-          'Gospel reading for the day',
-          'Epistle reading',
-          'Psalms',
-        ],
-      prayers:
-        feast.prayers || [
-          'Morning prayer',
-          'Evening prayer',
-          'Special intercessions',
-        ],
-      reminderEnabled: mockReminders[id] ?? false,
-    };
+  detail: async (id: string): Promise<Feast> => {
+    const data = await apiFetch<any>(`/feasts/${id}`, {
+      auth: false,
+    });
+    return mapFeastFromBackend(data);
   },
+
   reminder: async (
     id: string,
     enabled: boolean,
   ): Promise<{ reminderEnabled: boolean }> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    mockReminders[id] = enabled;
-    return { reminderEnabled: enabled };
+    const data = await apiFetch<any>(`/feasts/${id}/reminder`, {
+      method: 'POST',
+    });
+    return { reminderEnabled: data.reminder_enabled ?? enabled };
   },
 };
+
+function mapFeastFromBackend(data: any): Feast {
+  return {
+    id: data.id,
+    name: data.name,
+    date: data.date,
+    region: data.region,
+    description: data.description,
+    icon: data.icon,
+    articleIds: data.article_ids || [],
+    biography: data.biography,
+    traditions: data.traditions || [],
+    readings: data.readings || [],
+    prayers: data.prayers || [],
+    reminderEnabled: data.reminder_enabled || false,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
 

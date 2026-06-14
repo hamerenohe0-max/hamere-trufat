@@ -1,70 +1,55 @@
 import { apiFetch } from '../../../services/api';
 import { ProgressReport } from '../../../types/models';
-import { mockProgressReports } from '../../../data/mock-progress';
-
-// Mock progress API - will be replaced with real API later
-const mockLikes: Record<string, number> = {};
-const mockComments: Record<string, number> = {};
 
 export const progressApi = {
   list: async (): Promise<ProgressReport[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return mockProgressReports.map((p) => ({
-      id: p.id,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      title: p.title,
-      summary: p.description,
-      pdfUrl: p.pdfUrl,
-      beforeImage: p.beforeImages?.[0],
-      afterImage: p.afterImages?.[0],
-      timeline: p.timeline.map((t) => ({
-        label: t.title,
-        description: t.description,
-        date: t.date,
-      })),
-      likes: (mockLikes[p.id] ?? 0) + p.likes,
-      liked: false,
-      commentsCount: (mockComments[p.id] ?? 0) + p.comments,
-    }));
+    const response = await apiFetch<{ items: any[] }>('/progress', {
+      auth: false,
+    });
+    return response.items.map(mapProgressFromBackend);
   },
-  detail: async (id: string): Promise<ProgressReport> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const p = mockProgressReports.find((r) => r.id === id);
-    if (!p) throw new Error('Progress report not found');
 
-    return {
-      id: p.id,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      title: p.title,
-      summary: p.description,
-      pdfUrl: p.pdfUrl,
-      beforeImage: p.beforeImages?.[0],
-      afterImage: p.afterImages?.[0],
-      timeline: p.timeline.map((t) => ({
-        label: t.title,
-        description: t.description,
-        date: t.date,
-      })),
-      likes: (mockLikes[p.id] ?? 0) + p.likes,
-      liked: false,
-      commentsCount: (mockComments[p.id] ?? 0) + p.comments,
-    };
+  detail: async (id: string): Promise<ProgressReport> => {
+    const data = await apiFetch<any>(`/progress/${id}`, {
+      auth: false,
+    });
+    return mapProgressFromBackend(data);
   },
+
   like: async (id: string): Promise<{ likes: number }> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const current = mockLikes[id] ?? 0;
-    mockLikes[id] = current + 1;
-    const p = mockProgressReports.find((r) => r.id === id);
-    return { likes: mockLikes[id] + (p?.likes ?? 0) };
+    const data = await apiFetch<any>(`/progress/${id}/like`, {
+      method: 'POST',
+    });
+    return { likes: data.likes || 0 };
   },
+
   comment: async (id: string, body: string): Promise<{ success: boolean }> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const current = mockComments[id] ?? 0;
-    mockComments[id] = current + 1;
-    return { success: true };
+    return apiFetch<{ success: boolean }>(`/progress/${id}/comments`, {
+      method: 'POST',
+      body: { body },
+    });
   },
 };
 
+function mapProgressFromBackend(data: any): ProgressReport {
+  return {
+    id: data.id,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at || data.created_at,
+    title: data.title,
+    summary: data.summary,
+    pdfUrl: data.pdf_url,
+    beforeImage: data.before_image,
+    afterImage: data.after_image,
+    mediaGallery: data.media_gallery || [],
+    timeline: (data.timeline || []).map((item: any) => ({
+      label: item.label || item.title,
+      description: item.description,
+      date: item.date,
+    })),
+    likes: data.likes || 0,
+    liked: false,
+    commentsCount: data.comments_count || 0,
+  };
+}
 

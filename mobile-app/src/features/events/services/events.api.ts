@@ -21,9 +21,11 @@ export const eventsApi = {
     id: string,
     enabled: boolean,
   ): Promise<{ reminderEnabled: boolean }> => {
-    // Assuming endpoint for toggling reminder
-    // await apiFetch(`/events/${id}/reminder`, { method: 'POST', body: { enabled } });
-    return { reminderEnabled: enabled };
+    const data = await apiFetch<any>(`/events/${id}/reminder`, {
+      method: 'POST',
+      body: { enabled },
+    });
+    return { reminderEnabled: data.reminder_enabled ?? enabled };
   },
 };
 

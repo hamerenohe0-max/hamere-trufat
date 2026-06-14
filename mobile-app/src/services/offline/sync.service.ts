@@ -5,6 +5,7 @@ import { newsApi } from '../../features/news/services/news.api';
 import { articlesApi } from '../../features/articles/services/articles.api';
 import { feastsApi } from '../../features/feasts/services/feasts.api';
 import { readingsApi } from '../../features/readings/services/readings.api';
+import { progressApi } from '../../features/progress/services/progress.api';
 
 export class SyncService {
   static async syncQueue(): Promise<{ success: number; failed: number }> {
@@ -42,29 +43,36 @@ export class SyncService {
     switch (action.actionType) {
       case 'comment':
         if (action.entityType === 'news') {
-          await newsApi.addComment(action.entityId, action.payload);
+          // News comments are not supported by the backend yet.
+          return;
+        } else if (action.entityType === 'progress') {
+          await progressApi.comment(action.entityId, action.payload.body);
         }
         break;
 
       case 'like':
         if (action.entityType === 'news') {
-          await newsApi.toggleReaction(action.entityId, 'like');
+          await newsApi.react(action.entityId, 'like');
+        } else if (action.entityType === 'article') {
+          await articlesApi.react(action.entityId, 'like');
         } else if (action.entityType === 'progress') {
-          // await progressApi.toggleLike(action.entityId);
+          await progressApi.like(action.entityId);
         }
         break;
 
       case 'dislike':
         if (action.entityType === 'news') {
-          await newsApi.toggleReaction(action.entityId, 'dislike');
+          await newsApi.react(action.entityId, 'dislike');
+        } else if (action.entityType === 'article') {
+          await articlesApi.react(action.entityId, 'dislike');
         }
         break;
 
       case 'bookmark':
         if (action.entityType === 'news') {
-          await newsApi.toggleBookmark(action.entityId);
+          await newsApi.bookmark(action.entityId);
         } else if (action.entityType === 'article') {
-          await articlesApi.toggleBookmark(action.entityId);
+          await articlesApi.bookmark(action.entityId);
         }
         break;
 
@@ -78,20 +86,20 @@ export class SyncService {
     try {
       // Cache news
       const news = await newsApi.list();
-      if (news?.items) {
-        await CacheService.cacheNews(news.items);
+      if (news?.length) {
+        await CacheService.cacheNews(news);
       }
 
       // Cache articles
       const articles = await articlesApi.list();
-      if (articles?.items) {
-        await CacheService.cacheArticles(articles.items);
+      if (articles?.length) {
+        await CacheService.cacheArticles(articles);
       }
 
       // Cache feasts
       const feasts = await feastsApi.list();
-      if (feasts?.items) {
-        await CacheService.cacheFeasts(feasts.items);
+      if (feasts?.length) {
+        await CacheService.cacheFeasts(feasts);
       }
 
       // Cache today's reading

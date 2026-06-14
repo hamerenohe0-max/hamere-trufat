@@ -14,9 +14,7 @@ export const dashboardApi = {
   fetchSummary: async (): Promise<DashboardSummary> => {
     // If not using mock data, call real API
     if (!shouldUseMockData()) {
-      return apiFetch<DashboardSummary>('/dashboard/summary', {
-        method: 'GET',
-      });
+      return fetchApiSummary();
     }
 
     // Mock data implementation
@@ -93,10 +91,104 @@ export const dashboardApi = {
       ],
     };
   },
-  refreshQuickLinks: () =>
-    apiFetch<{ links: DashboardSummary['quickLinks'] }>(
-      '/dashboard/quick-links',
-    ),
+  refreshQuickLinks: async () => ({ links: quickLinks }),
 };
 
+const quickLinks: DashboardSummary['quickLinks'] = [
+  { label: 'Daily Readings', icon: 'book', href: '/(protected)/readings' },
+  { label: 'Events', icon: 'calendar', href: '/(protected)/events' },
+  { label: 'Feasts', icon: 'star', href: '/(protected)/feasts' },
+  { label: 'Articles', icon: 'document-text', href: '/(protected)/articles' },
+  { label: 'Games', icon: 'game-controller', href: '/(protected)/games' },
+  { label: 'Settings', icon: 'settings', href: '/(protected)/settings' },
+];
+
+async function fetchApiSummary(): Promise<DashboardSummary> {
+  const today = new Date().toISOString().split('T')[0];
+  const [reading, news, progress, articles, events] = await Promise.all([
+    apiFetch<any>('/readings/today', { auth: false }),
+    apiFetch<{ items: any[] }>('/news?status=published&limit=3&offset=0', { auth: false }),
+    apiFetch<{ items: any[] }>('/progress?limit=2&offset=0', { auth: false }),
+    apiFetch<{ items: any[] }>('/articles?limit=1&offset=0', { auth: false }),
+    apiFetch<{ items: any[] }>('/events?limit=5&offset=0', { auth: false }),
+  ]);
+
+  const upcomingEvent = events.items.find((event) => new Date(event.start_date) > new Date());
+  const featuredArticle = articles.items[0];
+
+  return {
+    date: today,
+    dailyGospel: {
+      title: reading?.gospel?.title || reading?.gospel?.book || 'Daily Reading',
+      reference: reading?.gospel?.reference || '',
+      body: reading?.gospel?.body || reading?.gospel?.text || '',
+    },
+    latestNews: news.items.map((item) => ({
+      id: item.id,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      title: item.title,
+      summary: item.summary,
+      body: item.body,
+      tags: item.tags || [],
+      images: item.images || (item.cover_image ? [item.cover_image] : []),
+      authorId: item.author_id,
+      publishedAt: item.published_at,
+      status: item.status,
+    })),
+    progressReports: progress.items.map((item) => ({
+      id: item.id,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at || item.created_at,
+      title: item.title,
+      summary: item.summary,
+      pdfUrl: item.pdf_url,
+      beforeImage: item.before_image,
+      afterImage: item.after_image,
+      mediaGallery: item.media_gallery || [],
+      timeline: (item.timeline || []).map((event: any) => ({
+        label: event.label || event.title,
+        description: event.description,
+        date: event.date,
+      })),
+      likes: item.likes || 0,
+      commentsCount: item.comments_count || 0,
+    })),
+    featuredArticle: featuredArticle
+      ? {
+        id: featuredArticle.id,
+        createdAt: featuredArticle.created_at,
+        updatedAt: featuredArticle.updated_at,
+        title: featuredArticle.title,
+        slug: featuredArticle.slug,
+        content: featuredArticle.content,
+        excerpt: featuredArticle.excerpt || '',
+        coverImage: featuredArticle.cover_image,
+        images: featuredArticle.images || [],
+        authorId: featuredArticle.author_id,
+        publishedAt: featuredArticle.published_at,
+        relatedEventIds: featuredArticle.related_event_ids || [],
+        readingTime: featuredArticle.reading_time || '1 min',
+        keywords: featuredArticle.keywords || [],
+      }
+      : undefined,
+    upcomingEvent: upcomingEvent
+      ? {
+        id: upcomingEvent.id,
+        createdAt: upcomingEvent.created_at,
+        updatedAt: upcomingEvent.updated_at || upcomingEvent.created_at,
+        name: upcomingEvent.name,
+        description: upcomingEvent.description,
+        startDate: upcomingEvent.start_date,
+        endDate: upcomingEvent.end_date,
+        location: upcomingEvent.location,
+        featured: upcomingEvent.featured,
+        coordinates: upcomingEvent.coordinates,
+        flyerImages: upcomingEvent.flyer_images || [],
+        reminderEnabled: upcomingEvent.reminder_enabled,
+      }
+      : undefined,
+    quickLinks,
+  };
+}
 
