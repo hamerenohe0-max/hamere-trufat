@@ -1,527 +1,618 @@
-# 📊 Database Schema Documentation
+# Database Schema Documentation
 
-Complete database schema for the Hamere Trufat platform using MongoDB.
+Complete database schema for the Hamere Trufat platform using PostgreSQL (Supabase).
 
-## Database Name
+## Database
 
-**`hamere-trufat`**
+**Platform:** Supabase (PostgreSQL 15+)
+**Extension:** `uuid-ossp` (for UUID generation)
 
-## Collections Overview
+## Tables Overview
 
-The database contains the following collections:
+The database contains the following 18 tables:
 
 1. **users** - User accounts and authentication
-2. **news** - News articles and posts
-3. **newscomments** - Comments on news articles
-4. **newsreactions** - Like/dislike reactions on news
-5. **newsbookmarks** - Bookmarked news by users
-6. **articles** - Long-form articles
-7. **articlebookmarks** - Bookmarked articles by users
-8. **events** - Church events and gatherings
-9. **feasts** - Religious feasts and celebrations
-10. **progressreports** - Progress reports with before/after images
-11. **dailyreadings** - Daily Bible readings
-12. **gamescores** - Game scores and leaderboards
-13. **media** - Uploaded media files (images, videos, documents)
-14. **notifications** - Push notifications and alerts
-15. **publisherrequests** - Publisher role requests
-16. **offlinecaches** - Offline sync cache data
+2. **device_sessions** - User device sessions (normalized from embedded array)
+3. **news** - News articles and posts
+4. **news_bookmarks** - Bookmarked news by users
+5. **news_reactions** - Like/dislike reactions on news
+6. **news_comments** - Comments on news articles
+7. **articles** - Long-form articles
+8. **article_bookmarks** - Bookmarked articles by users
+9. **events** - Church events and gatherings
+10. **feasts** - Religious feasts and celebrations
+11. **game_scores** - Game scores and leaderboards
+12. **media** - Uploaded media files (images, videos, documents)
+13. **notifications** - Push notifications and alerts
+14. **progress_reports** - Progress reports with before/after images
+15. **daily_readings** - Daily Bible readings (morning/evening)
+16. **publisher_requests** - Publisher role requests
+17. **offline_cache** - Offline sync cache data
+18. **publishers** - Publisher profile data (separated from users)
 
 ---
 
-## 1. Users Collection
+## 1. Users Table
 
-**Collection:** `users`
+**Table:** `users`
 
-### Schema
+### Columns
 
-```typescript
-{
-  name: string (required)
-  email: string (required, unique, indexed, lowercase)
-  passwordHash: string (required)
-  role: 'user' | 'publisher' | 'admin' (default: 'user')
-  status: 'pending' | 'active' | 'suspended' (default: 'pending')
-  profile: {
-    bio?: string
-    avatarUrl?: string
-    language?: string
-    region?: string
-    phone?: string
-  }
-  otpCode?: string | null
-  otpExpiresAt?: Date | null
-  otpVerifiedAt?: Date | null
-  refreshTokenHash?: string | null
-  deviceSessions: [{
-    deviceId: string (required)
-    deviceName?: string
-    devicePlatform?: string
-    appVersion?: string
-    lastIp?: string
-    lastActiveAt: Date (default: Date.now)
-  }]
-  lastLoginAt?: Date
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| name | TEXT | NOT NULL | User's display name |
+| email | TEXT | NOT NULL, UNIQUE | User's email address |
+| password_hash | TEXT | NOT NULL | Bcrypt password hash |
+| role | TEXT | NOT NULL, DEFAULT 'user', CHECK (role IN ('user', 'publisher', 'admin')) | User role |
+| status | TEXT | NOT NULL, DEFAULT 'pending', CHECK (status IN ('pending', 'active', 'suspended')) | Account status |
+| profile | JSONB | DEFAULT '{}' | Profile data (bio, avatar_url, language, region, phone) |
+| otp_code | TEXT | | OTP verification code |
+| otp_expires_at | TIMESTAMPTZ | | OTP expiration timestamp |
+| otp_verified_at | TIMESTAMPTZ | | OTP verification timestamp |
+| refresh_token_hash | TEXT | | Hashed refresh token |
+| last_login_at | TIMESTAMPTZ | | Last login timestamp |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `email` (unique)
-- `email` (indexed)
+- `idx_users_email` on `email`
+
+### Triggers
+- `update_users_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 2. News Collection
+## 2. Device Sessions Table
 
-**Collection:** `news`
+**Table:** `device_sessions`
 
-### Schema
+This table normalizes what would be an embedded array of devices on the user document in a document database.
 
-```typescript
-{
-  title: string (required)
-  summary: string (required)
-  body: string (required)
-  tags: string[] (default: [])
-  authorId: string (required, indexed)
-  coverImage?: string
-  status: 'draft' | 'scheduled' | 'published' (default: 'draft')
-  publishedAt?: Date
-  scheduledAt?: Date
-  views: number (default: 0)
-  likes: number (default: 0)
-  dislikes: number (default: 0)
-  commentsCount: number (default: 0)
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+### Columns
 
-### Indexes
-- `authorId`
-- `status, publishedAt` (compound, descending)
-- `tags`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| user_id | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Owner user |
+| device_id | TEXT | NOT NULL | Device identifier |
+| device_name | TEXT | | Human-readable device name |
+| device_platform | TEXT | | Platform (iOS, Android, web) |
+| app_version | TEXT | | App version at last session |
+| last_ip | TEXT | | Last known IP address |
+| last_active_at | TIMESTAMPTZ | DEFAULT NOW() | Last activity timestamp |
+
+### Constraints
+- `UNIQUE(user_id, device_id)` — one session record per device per user
 
 ---
 
-## 3. News Comments Collection
+## 3. News Table
 
-**Collection:** `newscomments`
+**Table:** `news`
 
-### Schema
+### Columns
 
-```typescript
-{
-  newsId: string (required, indexed)
-  userId: string (required)
-  body: string (required)
-  translatedBody?: string
-  likes: number (default: 0)
-  likedBy: string[] (default: [])
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| title | TEXT | NOT NULL | News headline |
+| summary | TEXT | NOT NULL | Short summary |
+| body | TEXT | NOT NULL | Full news body |
+| tags | TEXT[] | DEFAULT '{}' | Array of tags |
+| author_id | UUID | NOT NULL, REFERENCES users(id) | Author user |
+| cover_image | TEXT | | URL of cover image |
+| images | TEXT[] | DEFAULT '{}' | Additional image URLs |
+| status | TEXT | NOT NULL, DEFAULT 'draft', CHECK (status IN ('draft', 'scheduled', 'published')) | Publication status |
+| published_at | TIMESTAMPTZ | | Publication timestamp |
+| scheduled_at | TIMESTAMPTZ | | Scheduled publish timestamp |
+| views | INTEGER | DEFAULT 0 | View count |
+| likes | INTEGER | DEFAULT 0 | Like count |
+| dislikes | INTEGER | DEFAULT 0 | Dislike count |
+| comments_count | INTEGER | DEFAULT 0 | Comment count |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `newsId, createdAt` (compound, descending)
+- `idx_news_author` on `author_id`
+- `idx_news_status` on `(status, published_at DESC)`
+
+### Triggers
+- `update_news_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 4. News Reactions Collection
+## 4. News Bookmarks Table
 
-**Collection:** `newsreactions`
+**Table:** `news_bookmarks`
 
-### Schema
+### Columns
 
-```typescript
-{
-  newsId: string (required, indexed)
-  userId: string (required, indexed)
-  reaction: 'like' | 'dislike' (required)
-  createdAt: Date (default: Date.now)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| news_id | UUID | NOT NULL, REFERENCES news(id) ON DELETE CASCADE | Bookmarked news |
+| user_id | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Bookmarking user |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Bookmark timestamp |
 
-### Indexes
-- `newsId, userId` (compound, unique)
+### Constraints
+- `UNIQUE(news_id, user_id)` — one bookmark per user per news
 
 ---
 
-## 5. News Bookmarks Collection
+## 5. News Reactions Table
 
-**Collection:** `newsbookmarks`
+**Table:** `news_reactions`
 
-### Schema
+### Columns
 
-```typescript
-{
-  newsId: string (required, indexed)
-  userId: string (required, indexed)
-  createdAt: Date (default: Date.now)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| news_id | UUID | NOT NULL, REFERENCES news(id) ON DELETE CASCADE | Reacted news |
+| user_id | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Reacting user |
+| reaction | TEXT | NOT NULL, CHECK (reaction IN ('like', 'dislike')) | Reaction type |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Reaction timestamp |
 
-### Indexes
-- `newsId, userId` (compound, unique)
-
----
-
-## 6. Articles Collection
-
-**Collection:** `articles`
-
-### Schema
-
-```typescript
-{
-  title: string (required)
-  slug: string (required, unique, indexed)
-  content: string (required)
-  excerpt?: string
-  coverImage?: string
-  authorId: string (required, indexed)
-  publishedAt?: Date
-  relatedEventIds: string[] (default: [])
-  relatedFeastIds: string[] (default: [])
-  keywords: string[] (default: [])
-  views: number (default: 0)
-  audioUrl?: string
-  readingTime?: string
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
-
-### Indexes
-- `slug` (unique)
-- `authorId`
-- `publishedAt` (descending)
+### Constraints
+- `UNIQUE(news_id, user_id)` — one reaction per user per news
 
 ---
 
-## 7. Article Bookmarks Collection
+## 6. News Comments Table
 
-**Collection:** `articlebookmarks`
+**Table:** `news_comments`
 
-### Schema
+### Columns
 
-```typescript
-{
-  articleId: string (required, indexed)
-  userId: string (required, indexed)
-  createdAt: Date (default: Date.now)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| news_id | UUID | NOT NULL, REFERENCES news(id) ON DELETE CASCADE | Parent news |
+| user_id | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Comment author |
+| body | TEXT | NOT NULL | Comment text |
+| translated_body | TEXT | | Auto-translated text |
+| likes | INTEGER | DEFAULT 0 | Like count |
+| liked_by | UUID[] | DEFAULT '{}' | Array of user IDs who liked |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `articleId, userId` (compound, unique)
+- `idx_news_comments_news` on `(news_id, created_at DESC)`
+
+### Triggers
+- `update_news_comments_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 8. Events Collection
+## 7. Articles Table
 
-**Collection:** `events`
+**Table:** `articles`
 
-### Schema
+### Columns
 
-```typescript
-{
-  name: string (required)
-  startDate: Date (required, indexed)
-  endDate?: Date
-  location: string (required)
-  coordinates?: {
-    lat: number (required)
-    lng: number (required)
-  }
-  description?: string
-  feastId?: string
-  featured: boolean (default: false)
-  flyerImages: string[] (default: [])
-  reminderEnabled: boolean (default: false)
-  views: number (default: 0)
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| title | TEXT | NOT NULL | Article title |
+| slug | TEXT | NOT NULL, UNIQUE | URL-friendly unique slug |
+| content | TEXT | NOT NULL | Article body content |
+| excerpt | TEXT | | Short excerpt / preview |
+| cover_image | TEXT | | URL of cover image |
+| images | TEXT[] | DEFAULT '{}' | Additional image URLs |
+| author_id | UUID | NOT NULL, REFERENCES users(id) | Author user |
+| published_at | TIMESTAMPTZ | | Publication timestamp |
+| related_event_ids | UUID[] | DEFAULT '{}' | Related event IDs |
+| related_feast_ids | UUID[] | DEFAULT '{}' | Related feast IDs |
+| keywords | TEXT[] | DEFAULT '{}' | SEO keywords |
+| views | INTEGER | DEFAULT 0 | View count |
+| audio_url | TEXT | | URL of audio narration |
+| reading_time | TEXT | | Estimated reading time |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `startDate`
-- `featured, startDate` (compound)
+- `idx_articles_slug` on `slug` (unique)
+- `idx_articles_author` on `author_id`
+
+### Triggers
+- `update_articles_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 9. Feasts Collection
+## 8. Article Bookmarks Table
 
-**Collection:** `feasts`
+**Table:** `article_bookmarks`
 
-### Schema
+### Columns
 
-```typescript
-{
-  name: string (required)
-  date: Date (required, indexed)
-  region: string (required)
-  description?: string
-  icon?: string
-  articleIds: string[] (default: [])
-  biography?: string
-  traditions: string[] (default: [])
-  readings: string[] (default: [])
-  prayers: string[] (default: [])
-  reminderEnabled: boolean (default: false)
-  views: number (default: 0)
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| article_id | UUID | NOT NULL, REFERENCES articles(id) ON DELETE CASCADE | Bookmarked article |
+| user_id | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Bookmarking user |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Bookmark timestamp |
 
-### Indexes
-- `date`
-- `region, date` (compound)
+### Constraints
+- `UNIQUE(article_id, user_id)` — one bookmark per user per article
 
 ---
 
-## 10. Progress Reports Collection
+## 9. Events Table
 
-**Collection:** `progressreports`
+**Table:** `events`
 
-### Schema
+### Columns
 
-```typescript
-{
-  title: string (required)
-  summary: string (required)
-  pdfUrl?: string
-  beforeImage?: string
-  afterImage?: string
-  mediaGallery: string[] (default: [])
-  timeline: [{
-    label: string (required)
-    description: string (required)
-    date: Date (required)
-  }] (default: [])
-  likes: number (default: 0)
-  commentsCount: number (default: 0)
-  likedBy: string[] (default: [])
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| name | TEXT | NOT NULL | Event name |
+| start_date | TIMESTAMPTZ | NOT NULL | Event start date/time |
+| end_date | TIMESTAMPTZ | | Event end date/time |
+| location | TEXT | NOT NULL | Event location |
+| coordinates | JSONB | | `{ lat: number, lng: number }` |
+| description | TEXT | | Event description |
+| feast_id | UUID | | Associated feast ID |
+| featured | BOOLEAN | DEFAULT FALSE | Featured event flag |
+| flyer_images | TEXT[] | DEFAULT '{}' | Flyer image URLs |
+| reminder_enabled | BOOLEAN | DEFAULT FALSE | Reminder toggle |
+| views | INTEGER | DEFAULT 0 | View count |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `createdAt` (descending)
+- `idx_events_start_date` on `start_date`
+
+### Triggers
+- `update_events_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 11. Daily Readings Collection
+## 10. Feasts Table
 
-**Collection:** `dailyreadings`
+**Table:** `feasts`
 
-### Schema
+### Columns
 
-```typescript
-{
-  date: Date (required, unique, indexed)
-  gospel: {
-    title: string (required)
-    reference: string (required)
-    body: string (required)
-    audioUrl?: string
-  } (required)
-  epistle?: {
-    title: string (required)
-    reference: string (required)
-    body: string (required)
-  }
-  psalms: string[] (default: [])
-  reflections: string[] (default: [])
-  language: 'amharic' | 'english' | 'geez' (default: 'amharic')
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| name | TEXT | NOT NULL | Feast name |
+| date | TIMESTAMPTZ | NOT NULL | Feast date |
+| region | TEXT | NOT NULL | Region (e.g. Ethiopian, Eritrean) |
+| description | TEXT | | Feast description |
+| icon | TEXT | | Icon URL |
+| article_ids | UUID[] | DEFAULT '{}' | Related article IDs |
+| biography | TEXT | | Saint biography (if applicable) |
+| traditions | TEXT[] | DEFAULT '{}' | Tradition descriptions |
+| readings | TEXT[] | DEFAULT '{}' | Scripture readings |
+| prayers | TEXT[] | DEFAULT '{}' | Prayer texts |
+| reminder_enabled | BOOLEAN | DEFAULT FALSE | Reminder toggle |
+| views | INTEGER | DEFAULT 0 | View count |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `date` (unique)
+- `idx_feasts_date` on `date`
+- `idx_feasts_region_date` on `(region, date)`
+
+### Triggers
+- `update_feasts_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 12. Game Scores Collection
+## 11. Game Scores Table
 
-**Collection:** `gamescores`
+**Table:** `game_scores`
 
-### Schema
+### Columns
 
-```typescript
-{
-  userId: string (required, indexed)
-  game: 'trivia' | 'puzzle' | 'saint' | 'memory' (required, indexed)
-  score: number (required)
-  metadata: object (default: {})
-  createdAt: Date (default: Date.now)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| user_id | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Player user |
+| game | TEXT | NOT NULL, CHECK (game IN ('trivia', 'puzzle', 'saint', 'memory')) | Game type |
+| score | INTEGER | NOT NULL | Player score |
+| metadata | JSONB | DEFAULT '{}' | Additional game metadata |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Score timestamp |
 
 ### Indexes
-- `userId, game, score` (compound, score descending)
-- `game, score` (compound, score descending)
+- `idx_game_scores_user_game` on `(user_id, game, score DESC)`
+- `idx_game_scores_leaderboard` on `(game, score DESC)`
 
 ---
 
-## 13. Media Collection
+## 12. Media Table
 
-**Collection:** `media`
+**Table:** `media`
 
-### Schema
+### Columns
 
-```typescript
-{
-  filename: string (required)
-  url: string (required)
-  cloudinaryId: string (required)
-  type: 'image' | 'video' | 'document' | 'audio' (required)
-  size: number (required)
-  mimeType: string (required)
-  uploadedBy: string (required, indexed)
-  usageCount: number (default: 0)
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| filename | TEXT | NOT NULL | Original filename |
+| url | TEXT | NOT NULL | Public URL |
+| cloudinary_id | TEXT | NOT NULL | Cloudinary asset ID |
+| type | TEXT | NOT NULL, CHECK (type IN ('image', 'video', 'document', 'audio')) | Media type |
+| size | INTEGER | NOT NULL | File size in bytes |
+| mime_type | TEXT | NOT NULL | MIME type |
+| uploaded_by | UUID | NOT NULL, REFERENCES users(id) | Uploading user |
+| usage_count | INTEGER | DEFAULT 0 | Times used across app |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `uploadedBy, createdAt` (compound, descending)
-- `type`
+- `idx_media_uploaded_by` on `(uploaded_by, created_at DESC)`
+
+### Triggers
+- `update_media_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 14. Notifications Collection
+## 13. Notifications Table
 
-**Collection:** `notifications`
+**Table:** `notifications`
 
-### Schema
+### Columns
 
-```typescript
-{
-  type: 'assignment' | 'submission' | 'news' | 'system' (required)
-  title: string (required)
-  body: string (required)
-  targetUserIds: string[] (default: [])
-  targetRole?: 'all' | 'user' | 'publisher' | 'admin'
-  metadata: object (default: {})
-  readByUserIds: string[] (default: [])
-  sentAt?: Date
-  sentCount: number (default: 0)
-  readCount: number (default: 0)
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| type | TEXT | NOT NULL, CHECK (type IN ('assignment', 'submission', 'news', 'system')) | Notification type |
+| title | TEXT | NOT NULL | Notification title |
+| body | TEXT | NOT NULL | Notification body |
+| target_user_ids | UUID[] | DEFAULT '{}' | Targeted user IDs |
+| target_role | TEXT | CHECK (target_role IN ('all', 'user', 'publisher', 'admin')) | Target role filter |
+| metadata | JSONB | DEFAULT '{}' | Additional metadata |
+| read_by_user_ids | UUID[] | DEFAULT '{}' | Users who have read it |
+| sent_at | TIMESTAMPTZ | | When notification was sent |
+| sent_count | INTEGER | DEFAULT 0 | Delivery count |
+| read_count | INTEGER | DEFAULT 0 | Read count |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `targetUserIds, createdAt` (compound, descending)
-- `sentAt` (descending)
+- `idx_notifications_target` GIN index on `target_user_ids`
+
+### Triggers
+- `update_notifications_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 15. Publisher Requests Collection
+## 14. Progress Reports Table
 
-**Collection:** `publisherrequests`
+**Table:** `progress_reports`
 
-### Schema
+### Columns
 
-```typescript
-{
-  userId: string (required, unique, indexed)
-  status: 'pending' | 'approved' | 'rejected' (default: 'pending', indexed)
-  requestedAt: Date (required)
-  reviewedAt?: Date
-  reviewedBy?: string
-  rejectionReason?: string
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| title | TEXT | NOT NULL | Report title |
+| summary | TEXT | NOT NULL | Report summary |
+| pdf_url | TEXT | | URL to PDF report |
+| before_image | TEXT | | URL of before image |
+| after_image | TEXT | | URL of after image |
+| media_gallery | TEXT[] | DEFAULT '{}' | Gallery image URLs |
+| timeline | JSONB | DEFAULT '[]' | Array of `{ label, description, date }` |
+| likes | INTEGER | DEFAULT 0 | Like count |
+| comments_count | INTEGER | DEFAULT 0 | Comment count |
+| liked_by | UUID[] | DEFAULT '{}' | Array of user IDs who liked |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
-### Indexes
-- `userId` (unique)
-- `status, requestedAt` (compound, descending)
+### Triggers
+- `update_progress_reports_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
-## 16. Offline Cache Collection
+## 15. Daily Readings Table
 
-**Collection:** `offlinecaches`
+**Table:** `daily_readings`
 
-### Schema
+### Columns
 
-```typescript
-{
-  key: string (required, indexed)
-  entity: string (required, indexed)
-  payload: object (required)
-  expiresAt?: Date
-  version: number (required)
-  checksum: string (required)
-  deviceId: string (required, indexed)
-  userId: string (required, indexed)
-  createdAt: Date (auto)
-  updatedAt: Date (auto)
-}
-```
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT uuid_generate_v4() | Unique identifier |
+| date | DATE | NOT NULL | Reading date |
+| time_of_day | TEXT | NOT NULL, CHECK (time_of_day IN ('Morning', 'Evening')) | Morning or Evening |
+| gospel_geez | TEXT | | Gospel text in Ge'ez |
+| gospel_amharic | TEXT | | Gospel text in Amharic |
+| gospel_audio_url | TEXT | | Gospel audio URL |
+| gospel_ref | TEXT | | Gospel scripture reference |
+| epistle_geez | TEXT | | Epistle text in Ge'ez |
+| epistle_amharic | TEXT | | Epistle text in Amharic |
+| epistle_ref | TEXT | | Epistle scripture reference |
+| psalm_geez | TEXT | | Psalm text in Ge'ez |
+| psalm_amharic | TEXT | | Psalm text in Amharic |
+| psalm_audio_url | TEXT | | Psalm audio URL |
+| psalm_ref | TEXT | | Psalm scripture reference |
+| acts_geez | TEXT | | Acts text in Ge'ez |
+| acts_amharic | TEXT | | Acts text in Amharic |
+| acts_ref | TEXT | | Acts scripture reference |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
+
+### Constraints
+- `UNIQUE(date, time_of_day)` — one morning and one evening reading per date
+
+### Triggers
+- `update_daily_readings_updated_at`: Sets `updated_at = NOW()` on UPDATE
+
+### Row Level Security
+- `"Public can view daily readings"` — SELECT for everyone
+- `"Admins can manage daily readings"` — ALL for admin users
+
+---
+
+## 16. Publisher Requests Table
+
+**Table:** `publisher_requests`
+
+### Columns
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| user_id | UUID | NOT NULL, UNIQUE, REFERENCES users(id) ON DELETE CASCADE | Requesting user |
+| status | TEXT | NOT NULL, DEFAULT 'pending', CHECK (status IN ('pending', 'approved', 'rejected')) | Request status |
+| requested_at | TIMESTAMPTZ | NOT NULL | When requested |
+| reviewed_at | TIMESTAMPTZ | | When reviewed |
+| reviewed_by | UUID | REFERENCES users(id) | Admin who reviewed |
+| rejection_reason | TEXT | | Reason if rejected |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
 ### Indexes
-- `userId, deviceId, entity` (compound)
-- `expiresAt` (TTL index for auto-deletion)
+- `idx_publisher_requests_status` on `(status, requested_at DESC)`
+
+### Triggers
+- `update_publisher_requests_updated_at`: Sets `updated_at = NOW()` on UPDATE
+
+---
+
+## 17. Offline Cache Table
+
+**Table:** `offline_cache`
+
+### Columns
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique identifier |
+| key | TEXT | NOT NULL | Cache key |
+| entity | TEXT | NOT NULL | Entity type (e.g. 'news', 'feasts') |
+| payload | JSONB | NOT NULL | Cached data |
+| expires_at | TIMESTAMPTZ | | Cache expiration |
+| version | INTEGER | NOT NULL | Data version for invalidation |
+| checksum | TEXT | NOT NULL | Integrity checksum |
+| device_id | TEXT | NOT NULL | Device identifier |
+| user_id | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Owner user |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
+
+### Indexes
+- `idx_offline_cache_user_device` on `(user_id, device_id, entity)`
+
+### Triggers
+- `update_offline_cache_updated_at`: Sets `updated_at = NOW()` on UPDATE
+
+---
+
+## 18. Publishers Table
+
+**Table:** `publishers`
+
+This table stores extended profile data for users with the `publisher` role, normalized out of the `users.profile` JSONB column.
+
+### Columns
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, REFERENCES users(id) ON DELETE CASCADE | Matches users.id |
+| bio | TEXT | | Publisher biography |
+| phone | TEXT | | Contact phone number |
+| region | TEXT | | Geographic region |
+| language | TEXT | | Preferred language |
+| avatar_url | TEXT | | Profile avatar URL |
+| website_url | TEXT | | Personal website |
+| social_links | JSONB | DEFAULT '{}' | Social media links |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
+
+### Indexes
+- `idx_publishers_region` on `region`
+
+### Triggers
+- `update_publishers_updated_at`: Sets `updated_at = NOW()` on UPDATE
 
 ---
 
 ## Relationships
 
-### User References
-- `authorId` → `users._id` (in news, articles)
-- `userId` → `users._id` (in comments, reactions, bookmarks, scores)
-- `uploadedBy` → `users._id` (in media)
-- `reviewedBy` → `users._id` (in publisherrequests)
+### Foreign Key References
 
-### Content References
-- `newsId` → `news._id` (in newscomments, newsreactions, newsbookmarks)
-- `articleId` → `articles._id` (in articlebookmarks)
-- `feastId` → `feasts._id` (in events)
-- `relatedEventIds` → `events._id[]` (in articles)
-- `relatedFeastIds` → `feasts._id[]` (in articles)
+| Source Table | Column(s) | References | On Delete |
+|-------------|-----------|------------|-----------|
+| device_sessions | user_id | users(id) | CASCADE |
+| news | author_id | users(id) | — |
+| news_bookmarks | news_id | news(id) | CASCADE |
+| news_bookmarks | user_id | users(id) | CASCADE |
+| news_reactions | news_id | news(id) | CASCADE |
+| news_reactions | user_id | users(id) | CASCADE |
+| news_comments | news_id | news(id) | CASCADE |
+| news_comments | user_id | users(id) | CASCADE |
+| articles | author_id | users(id) | — |
+| article_bookmarks | article_id | articles(id) | CASCADE |
+| article_bookmarks | user_id | users(id) | CASCADE |
+| game_scores | user_id | users(id) | CASCADE |
+| media | uploaded_by | users(id) | — |
+| publisher_requests | user_id | users(id) | CASCADE |
+| publisher_requests | reviewed_by | users(id) | — |
+| offline_cache | user_id | users(id) | CASCADE |
+| publishers | id | users(id) | CASCADE |
+
+### Soft / Array-Based References
+
+| Source Table | Column | Target Table | Nature |
+|-------------|--------|-------------|--------|
+| events | feast_id | feasts(id) | Optional single FK |
+| articles | related_event_ids | events(id) | Array of UUIDs |
+| articles | related_feast_ids | feasts(id) | Array of UUIDs |
+| feasts | article_ids | articles(id) | Array of UUIDs |
+| news_comments | liked_by | users(id) | Array of UUIDs |
+| notifications | target_user_ids | users(id) | Array of UUIDs |
+| notifications | read_by_user_ids | users(id) | Array of UUIDs |
+| progress_reports | liked_by | users(id) | Array of UUIDs |
 
 ---
 
 ## Database Setup
 
-### MongoDB Atlas Configuration
+### Supabase Configuration
 
-1. **Database Name:** `hamere-trufat`
-2. **Connection String Format:**
-   ```
-   mongodb+srv://username:password@cluster.mongodb.net/hamere-trufat?retryWrites=true&w=majority
-   ```
+1. **Project:** Supabase PostgreSQL 15+
+2. **Extension:** `uuid-ossp` (enabled in migration)
+3. **Schema:** Public schema (`public`)
 
-### Initial Setup
+### Migrations
 
-The schemas are automatically created when the backend starts. No manual database creation is needed.
+Migrations are stored in `backend/supabase/migrations/` and are run sequentially:
 
-### Indexes
+| File | Description |
+|------|-------------|
+| `001_initial_schema.sql` | Core tables (17 tables, trigger function, updated_at triggers) |
+| `002_add_news_images.sql` | Adds `images` array column to `news` |
+| `003_add_articles_images.sql` | Adds `images` array column to `articles` |
+| `004_ensure_news_engagement_columns.sql` | Ensures likes/dislikes/comments_count on news |
+| `005_separate_publishers_table.sql` | Creates `publishers` table, migrates existing publisher profiles |
+| `006_daily_readings_table.sql` | Recreates `daily_readings` with individual columns and RLS |
+| `007_mock_daily_readings.sql` | Inserts mock daily reading data |
 
-All indexes are automatically created by Mongoose when the schemas are registered. The backend will create them on first connection.
+An `all_in_one_schema_setup.sql` file combines all migrations into a single script.
+
+### Automated Timestamps
+
+All tables with an `updated_at` column have a `BEFORE UPDATE` trigger that automatically sets `updated_at = NOW()` using the `update_updated_at_column()` function.
+
+### Row Level Security (RLS)
+
+RLS is enabled on the `daily_readings` table:
+- Public read access via `"Public can view daily readings"` policy
+- Admin write access via `"Admins can manage daily readings"` policy
+
+Additional RLS policies should be applied to other tables as needed for production.
 
 ---
 
 ## Notes
 
-- All collections use MongoDB's automatic `_id` field
-- Timestamps (`createdAt`, `updatedAt`) are automatically managed by Mongoose
-- Unique indexes prevent duplicate entries
-- Compound indexes optimize common query patterns
-- TTL index on `offlinecaches.expiresAt` automatically deletes expired cache entries
-
+- All primary keys use `UUID` type generated with `gen_random_uuid()` (except `daily_readings` which uses `uuid_generate_v4()`)
+- The `publishers` table uses its `id` column as both PK and FK to `users(id)` (1:1 relationship)
+- Array columns (`TEXT[]`, `UUID[]`) and JSONB columns provide flexible data storage
+- Unique constraints on junction tables (`news_bookmarks`, `news_reactions`, `article_bookmarks`) prevent duplicate entries
+- GIN index on `notifications.target_user_ids` enables efficient array containment queries
+- Composite indexes optimize common query patterns (user scores, leaderboards, filtered listings)

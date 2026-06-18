@@ -15,8 +15,8 @@ export class GamesService {
         user_id: userId,
         game,
         score,
-        metadata: metadata || {},
-      } as any)
+        metadata: (metadata || {}) as any,
+      })
       .select()
       .single();
 

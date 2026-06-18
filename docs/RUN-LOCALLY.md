@@ -5,7 +5,7 @@ Complete guide to run the Hamere Trufat platform on your local machine.
 ## 📋 Prerequisites
 
 - **Node.js** v18+ - [Download](https://nodejs.org)
-- **MongoDB** - [Download](https://www.mongodb.com/try/download/community) or use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) (free cloud option)
+- **Supabase** - [Create a free project](https://supabase.com) (PostgreSQL database with auth, storage, and real-time APIs)
 - **Git** - [Download](https://git-scm.com)
 
 ## 🔧 Setup
@@ -31,7 +31,9 @@ npm install
 #### Backend (`backend/.env`)
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/hamere-trufat
+SUPABASE_URL=https://obcvkqtgdhohkrjdhdmk.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9iY3ZrcXRnZGhvaGtyamRoZG1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzODI2MTksImV4cCI6MjA4MTk1ODYxOX0.EJ2D1N5L2bGj1N_qyiL2g6LaHBleqgZEx3Sc2J-p6TE
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9iY3ZrcXRnZGhvaGtyamRoZG1rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjM4MjYxOSwiZXhwIjoyMDgxOTU4NjE5fQ.D6TPH3i32zJujLoSegpMIFwtnKjZpRAJ60CqDFbJ5_M
 JWT_SECRET=dev-secret-key-change-in-production
 JWT_REFRESH_SECRET=dev-refresh-secret-change-in-production
 JWT_EXPIRES_IN=1h
@@ -55,19 +57,13 @@ EXPO_PUBLIC_USE_MOCK_DATA=false
 
 > **Tip**: Use the `setup-env.ps1` script to automatically create these files.
 
-### 3. Start MongoDB
+### 3. Set Up Supabase
 
-**Option A: Local MongoDB**
-```bash
-# Windows: MongoDB should start as a service automatically
-# Or start manually: net start MongoDB
-```
+1. Create a free project at https://supabase.com
+2. Copy your project's `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` from the Supabase dashboard (Settings → API)
+3. Add them to `backend/.env` as shown above
 
-**Option B: MongoDB Atlas (Cloud)**
-1. Sign up at https://www.mongodb.com/cloud/atlas
-2. Create a free cluster
-3. Get connection string
-4. Update `MONGODB_URI` in `backend/.env`
+> No local database server needed — Supabase runs in the cloud. The SQL schema is applied automatically via migrations.
 
 ## ▶️ Running the System
 
@@ -147,10 +143,10 @@ PORT=4001  # for backend
 # Or stop the service using that port
 ```
 
-### MongoDB Connection Error
-- Verify MongoDB is running: `mongod --version`
-- Check connection string in `backend/.env`
-- For Atlas: Ensure IP whitelist includes `0.0.0.0/0`
+### Supabase Connection Error
+- Verify `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are set in `backend/.env`
+- Check your Supabase project is active at https://supabase.com
+- Ensure the project's IP restrictions (if any) allow your connection
 
 ### Module Not Found
 ```bash

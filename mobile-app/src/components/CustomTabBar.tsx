@@ -28,7 +28,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
 
   const isActive = (route: string) => {
     if (route === '/(protected)/home') {
@@ -40,9 +40,9 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
   // Dynamic Theme Styles
   const containerStyle = {
-    backgroundColor: isDark ? colors.primary.main : '#ffffff',
+    backgroundColor: isDark ? colors.background.primary : '#ffffff',
     borderTopWidth: isDark ? 0 : 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: colors.border.light,
   };
 
   const getIconColor = (active: boolean) => {

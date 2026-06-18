@@ -54,7 +54,7 @@ GET /api/v1/verses/amhara/BOOK_ID/CHAPTER/VERSE
 ```
 
 **Recommendation**: Build a custom backend module that:
-1. Stores daily Gospel/readings in MongoDB (manually curated via admin panel)
+1. Stores daily Gospel/readings in PostgreSQL (Supabase) (manually curated via admin panel)
 2. Serves them via REST endpoints matching your example format
 3. Allows admin to upload/schedule readings for specific dates
 4. Supports multiple languages (Amharic, English, etc.)
@@ -85,7 +85,7 @@ GET /api/v1/verses/amhara/BOOK_ID/CHAPTER/VERSE
 export class ReadingsController {
   @Get('daily/:date') // date format: YYYY-MM-DD
   async getDailyReadings(@Param('date') date: string) {
-    // 1. Check MongoDB for custom reading for this date
+    // 1. Check database for custom reading for this date
     // 2. If found, return it
     // 3. If not, calculate lectionary date and fetch from bible-api.com
     // 4. Cache result
@@ -98,7 +98,7 @@ export class ReadingsController {
 }
 ```
 
-### Database Schema (MongoDB):
+### Database Schema (PostgreSQL):
 
 ```typescript
 // readings.schema.ts

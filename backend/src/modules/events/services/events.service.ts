@@ -22,7 +22,7 @@ export class EventsService {
         featured: createEventDto.featured || false,
         flyer_images: createEventDto.flyerImages || [],
         reminder_enabled: createEventDto.reminderEnabled || false,
-      } as any)
+      })
       .select()
       .single();
 
@@ -62,7 +62,7 @@ export class EventsService {
     // Increment views
     this.supabase.client
       .from('events')
-      .update({ views: ((event as any).views || 0) + 1 } as any)
+      .update({ views: (event.views || 0) + 1 })
       .eq('id', id);
 
     return event;

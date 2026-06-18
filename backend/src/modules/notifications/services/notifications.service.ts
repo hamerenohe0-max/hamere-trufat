@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../../../database/supabase.service';
+import { Database } from '../../../database/types';
 import { UsersService } from '../../users/services/users.service';
 
 @Injectable()
@@ -91,7 +92,7 @@ export class NotificationsService {
         .from('notifications' as any)
         .update({
           read_by_user_ids: readByUserIds,
-          read_count: notification.read_count + 1,
+          read_count: (notification.read_count || 0) + 1,
         })
         .eq('id', id)
         .select()

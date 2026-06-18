@@ -24,7 +24,7 @@ export function ImageUpload({
   folder = "hamere-trufat",
   disabled = false,
   aspectRatio = 1,
-  enableCrop = true,
+  enableCrop = false,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);

@@ -8,7 +8,7 @@ $backendEnv = "backend\.env"
 if (!(Test-Path $backendEnv)) {
     Write-Host "Creating $backendEnv..."
     $backendContent = @"
-MONGODB_URI=mongodb://localhost:27017/hamere-trufat
+SUPABASE_URL=https://obcvkqtgdhohkrjdhdmk.supabase.co
 JWT_SECRET=dev-secret-key-change-in-production-$(Get-Random)
 JWT_REFRESH_SECRET=dev-refresh-secret-change-in-production-$(Get-Random)
 JWT_EXPIRES_IN=1h

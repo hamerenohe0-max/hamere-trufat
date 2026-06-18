@@ -15,18 +15,15 @@ Complete list of everything needed to run the Hamere Trufat platform.
   - Download: https://git-scm.com
   - Verify: `git --version`
 
-- [ ] **MongoDB** (choose one):
-  - **Option A: MongoDB Atlas (Cloud - Recommended)**
-    - Sign up: https://www.mongodb.com/cloud/atlas
-    - Free tier available
-    - No local installation needed
-  - **Option B: Local MongoDB**
-    - Download: https://www.mongodb.com/try/download/community
-    - Install and start MongoDB service
+- [ ] **Supabase** (PostgreSQL database)
+   - Sign up: https://supabase.com
+   - Free tier: 500MB database, 2GB storage
+   - No local installation needed
+   - Provides database, auth, and file storage
 
 ### 2. Accounts (Optional - for full features)
 
-- [ ] **MongoDB Atlas Account** (if using cloud database)
+- [ ] **Supabase Account** (free - required for database)
 - [ ] **Expo Account** (for mobile app - free)
   - Sign up: https://expo.dev
   - Not required for local development
@@ -57,7 +54,9 @@ Create/update these files:
 
 #### `backend/.env`
 ```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/hamere-trufat?retryWrites=true&w=majority
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 JWT_SECRET=dev-secret-key-change-in-production
 JWT_REFRESH_SECRET=dev-refresh-secret-change-in-production
 JWT_EXPIRES_IN=1h
@@ -79,30 +78,15 @@ EXPO_PUBLIC_USE_MOCK_DATA=false
 
 > **Tip**: Run `.\setup-env.ps1` to auto-create these files (Windows)
 
-### Step 3: MongoDB Setup
+### Step 3: Run Database Migrations
 
-#### If using MongoDB Atlas:
-
-1. [ ] Create cluster in MongoDB Atlas
-2. [ ] Create database user (username/password)
-3. [ ] Configure Network Access:
-   - Go to "Network Access" in Atlas
-   - Add IP Address: `0.0.0.0/0` (for development)
-   - Or add your specific IP address
-4. [ ] Get connection string
-5. [ ] Update `MONGODB_URI` in `backend/.env`
-
-#### If using Local MongoDB:
-
-1. [ ] Install MongoDB
-2. [ ] Start MongoDB service:
+1. [ ] Ensure Supabase credentials are set in `backend/.env`
+2. [ ] Run migrations:
    ```powershell
-   net start MongoDB  # Windows
+   cd backend
+   npm run migrate
    ```
-3. [ ] Verify it's running:
-   ```powershell
-   mongod --version
-   ```
+3. [ ] Verify tables are created in Supabase dashboard (Table Editor)
 
 ### Step 4: Create Admin User
 
@@ -185,7 +169,7 @@ Once running, access at:
 ### Backend
 - [ ] Visit http://localhost:4000/api/v1
 - [ ] Should see API response (not error)
-- [ ] No MongoDB connection errors in terminal
+- [ ] No database connection errors in terminal
 
 ### Admin Panel
 - [ ] Visit http://localhost:3000
@@ -202,11 +186,11 @@ Once running, access at:
 ### Port Already in Use
 - **Solution**: Change port in `.env` file or stop the service using that port
 
-### MongoDB Connection Error
+### Supabase Connection Error
 - **Solution**: 
-  - Check connection string in `backend/.env`
-  - Verify MongoDB Atlas Network Access (IP whitelist)
-  - Ensure cluster is running (not paused)
+  - Verify `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in `backend/.env`
+  - Check Supabase project is active (not paused) in dashboard
+  - Regenerate keys if they were rotated
 
 ### Module Not Found
 - **Solution**: 
@@ -218,7 +202,7 @@ Once running, access at:
 
 ### Backend Won't Start
 - **Solution**: 
-  - Check MongoDB connection
+  - Check Supabase connection (verify credentials)
   - Verify `.env` file exists and has correct values
   - Check terminal for error messages
 
@@ -244,10 +228,10 @@ hamere-trufat/
 
 1. ✅ Install Node.js v18+
 2. ✅ Install Git
-3. ✅ Set up MongoDB (Atlas or local)
+3. ✅ Set up Supabase (free account)
 4. ✅ Install dependencies: `npm install` in each directory
 5. ✅ Create `.env` files (use `setup-env.ps1`)
-6. ✅ Configure MongoDB connection string
+6. ✅ Configure Supabase credentials
 7. ✅ Start all services (use `start-system.ps1` or manual)
 8. ✅ Create admin user
 9. ✅ Access admin panel at http://localhost:3000
@@ -256,6 +240,6 @@ hamere-trufat/
 
 - **Local Development**: See `RUN-LOCALLY.md`
 - **Deployment**: See `DEPLOY.md`
-- **MongoDB Troubleshooting**: See `MONGODB-TROUBLESHOOTING.md`
+- **Supabase Troubleshooting**: See `SUPABASE-TROUBLESHOOTING.md`
 - **Architecture**: See `docs/phase-2-architecture.md`
 

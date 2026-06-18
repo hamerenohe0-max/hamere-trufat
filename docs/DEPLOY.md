@@ -12,7 +12,7 @@ Complete guide to deploy Hamere Trufat to production using free hosting.
 ## 📋 Prerequisites
 
 You need accounts for:
-- **MongoDB Atlas** (database) - FREE
+- **Supabase** (database) - FREE
 - **Railway** (backend hosting) - FREE
 - **Vercel** (admin panel) - FREE
 - **GitHub** (code repository) - FREE
@@ -21,16 +21,21 @@ You need accounts for:
 
 ## Step 1: Set Up Accounts (10 minutes)
 
-### MongoDB Atlas
+### Supabase
 
-1. Go to https://www.mongodb.com/cloud/atlas/register
-2. Sign up (free)
-3. Create cluster → Choose **FREE** (M0) tier
-4. Wait 3-5 minutes for cluster to be ready
-5. Click **"Connect"** → **"Connect your application"**
-6. Copy connection string (e.g., `mongodb+srv://username:password@cluster.mongodb.net/...`)
-7. Replace `<password>` with your database password
-8. **Save this connection string!**
+1. Go to https://supabase.com
+2. Sign up (free) - can use GitHub for one-click auth
+3. Click **"New Project"**
+4. Enter project name: `hamere-trufat`
+5. Set a secure database password (save it!)
+6. Choose a region close to you
+7. Click **"Create new project"** (wait ~2 minutes)
+8. Once created, go to **Project Settings → API**
+9. Copy these values:
+   - **Project URL** → this is your `SUPABASE_URL`
+   - **anon public** → this is your `SUPABASE_ANON_KEY`
+   - **service_role** → this is your `SUPABASE_SERVICE_ROLE_KEY`
+10. **Save these values!**
 
 ### Railway
 
@@ -89,13 +94,15 @@ Verify: Go to your GitHub repository - you should see all your files.
 ```
 NODE_ENV = production
 PORT = 4000
-MONGODB_URI = your_mongodb_connection_string_from_step_1
+SUPABASE_URL = your_supabase_project_url_from_step_1
+SUPABASE_ANON_KEY = your_supabase_anon_key_from_step_1
+SUPABASE_SERVICE_ROLE_KEY = your_supabase_service_role_key_from_step_1
 JWT_SECRET = 4824a9f889be1bd39e3b4fdb4d7b65db77fd457e990d743002643476c9d7efe0
 JWT_REFRESH_SECRET = 0c78fdd0a5e32eb4da08144d6c9f86bfd7a5248f77ff68f66e711a3fdae83128
 CORS_ORIGIN = https://your-admin.vercel.app
 ```
 
-> **Note**: Replace `your_mongodb_connection_string_from_step_1` with your actual MongoDB URI.  
+> **Note**: Replace `your_supabase_*` values with your actual Supabase credentials from Step 1.  
 > For `CORS_ORIGIN`, use a placeholder for now - you'll update it after deploying the admin panel.
 
 11. Railway will **automatically deploy**!
@@ -186,7 +193,9 @@ eas build --platform android --profile production
 |----------|-------|-------------|
 | `NODE_ENV` | `production` | Environment |
 | `PORT` | `4000` | Server port |
-| `MONGODB_URI` | `mongodb+srv://...` | MongoDB connection string |
+| `SUPABASE_URL` | `https://your-project.supabase.co` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | `your-anon-key` | Supabase anonymous public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | `your-service-role-key` | Supabase service role key (admin) |
 | `JWT_SECRET` | `4824a9f...` | JWT signing secret (from `DEPLOYMENT-SECRETS.txt`) |
 | `JWT_REFRESH_SECRET` | `0c78fdd...` | JWT refresh secret (from `DEPLOYMENT-SECRETS.txt`) |
 | `CORS_ORIGIN` | `https://your-admin.vercel.app` | Admin panel URL |
@@ -218,7 +227,7 @@ If you want to enable media uploads:
 
 - Check Railway logs for errors
 - Verify all environment variables are set
-- Ensure MongoDB connection string is correct
+- Ensure Supabase credentials are correct
 - Check that `PORT` is set to `4000`
 
 ### Admin panel can't connect to backend
@@ -228,11 +237,12 @@ If you want to enable media uploads:
 - Ensure CORS is configured correctly
 - Check browser console for errors
 
-### MongoDB connection fails
+### Supabase connection fails
 
-- Verify connection string format
-- Check that IP whitelist allows all IPs (0.0.0.0/0) in MongoDB Atlas
-- Ensure password doesn't have special characters (or URL-encode them)
+- Verify `SUPABASE_URL` is correct (must end with `.supabase.co`)
+- Check that `SUPABASE_SERVICE_ROLE_KEY` is valid (not expired)
+- Ensure the Supabase project is not paused (check dashboard)
+- Verify database password was set correctly during project creation
 
 ### Railway deployment fails
 
@@ -261,7 +271,7 @@ Located in `DEPLOYMENT-SECRETS.txt`:
 ### Important URLs
 
 After deployment, save these:
-- MongoDB Atlas Dashboard: https://cloud.mongodb.com
+- Supabase Dashboard: https://supabase.com/dashboard
 - Railway Dashboard: https://railway.app
 - Vercel Dashboard: https://vercel.com
 - Your Backend URL: `https://your-backend.railway.app`
@@ -283,7 +293,7 @@ After deployment, save these:
 
 - **Railway Docs**: https://docs.railway.app
 - **Vercel Docs**: https://vercel.com/docs
-- **MongoDB Atlas Docs**: https://docs.atlas.mongodb.com
+- **Supabase Docs**: https://supabase.com/docs
 - **Expo EAS Docs**: https://docs.expo.dev/build/introduction/
 
 ---

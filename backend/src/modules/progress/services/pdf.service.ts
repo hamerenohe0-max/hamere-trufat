@@ -8,7 +8,7 @@ export class PdfService {
 
   async extractTextFromPdf(pdfBuffer: Buffer): Promise<string> {
     try {
-      const data = await (pdfParse as any)(pdfBuffer);
+      const data = await (pdfParse as unknown as (buffer: Buffer) => Promise<{ text: string; numpages: number; info: Record<string, unknown> }>)(pdfBuffer);
       return data.text;
     } catch (error) {
       throw new Error(`Failed to extract text from PDF: ${error.message}`);
@@ -20,7 +20,7 @@ export class PdfService {
     info: Record<string, unknown>;
   }> {
     try {
-      const data = await (pdfParse as any)(pdfBuffer);
+      const data = await (pdfParse as unknown as (buffer: Buffer) => Promise<{ text: string; numpages: number; info: Record<string, unknown> }>)(pdfBuffer);
       return {
         pages: data.numpages,
         info: data.info || {},

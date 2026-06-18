@@ -20,7 +20,7 @@ export class FeastsService {
         readings: createFeastDto.readings || [],
         prayers: createFeastDto.prayers || [],
         reminder_enabled: createFeastDto.reminderEnabled || false,
-      } as any)
+      })
       .select()
       .single();
 
@@ -66,7 +66,7 @@ export class FeastsService {
     // Increment views
     this.supabase.client
       .from('feasts')
-      .update({ views: ((feast as any).views || 0) + 1 } as any)
+      .update({ views: (feast.views || 0) + 1 })
       .eq('id', id);
 
     return feast;
@@ -126,7 +126,7 @@ export class FeastsService {
     
     const { data } = await this.supabase.client
       .from('feasts')
-      .update({ reminder_enabled: !(feast as any).reminder_enabled } as any)
+      .update({ reminder_enabled: !feast.reminder_enabled })
       .eq('id', id)
       .select()
       .single();

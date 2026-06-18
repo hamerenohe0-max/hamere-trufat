@@ -1,4 +1,5 @@
-import { Controller, Get, Patch, Post, UseGuards, Body, Param } from '@nestjs/common';
+import { Controller, Get, Patch, Post, UseGuards, Body, Param, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from '../services/users.service';
 import type { SafeUser } from '../services/users.service';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
@@ -38,5 +39,14 @@ export class UsersController {
   @Roles('user', 'publisher', 'admin')
   async changePassword(@CurrentUser() user: SafeUser, @Body() body: ChangePasswordDto) {
     return this.usersService.changePassword(user.id, body);
+  }
+
+  @Post('me/avatar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'publisher', 'admin')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAvatar(@UploadedFile() file: any, @CurrentUser() user: SafeUser) {
+    const avatarUrl = await this.usersService.uploadAvatar(user.id, file);
+    return { avatarUrl };
   }
 }

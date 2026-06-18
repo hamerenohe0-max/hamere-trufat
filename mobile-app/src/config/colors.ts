@@ -37,6 +37,7 @@ export const colors = {
       inverse: '#ffffff',
     },
     border: {
+      subtle: '#e2e8f0',
       light: '#e2e8f0',
       medium: '#cbd5e1',
       dark: '#94a3b8',
@@ -61,35 +62,36 @@ export const colors = {
 
   dark: {
     background: {
-      primary: '#14381B',   // Deep Green (Main Background)
-      secondary: '#1A4221', // Slightly Lighter Green (Cards/Surfaces)
-      tertiary: '#23522B',  // Even Lighter Green (Elevated Surfaces)
+      primary: '#0f172a',   // Dark Slate (Main Background)
+      secondary: '#1e293b', // Slightly Lighter Slate (Cards/Surfaces)
+      tertiary: '#334155',  // Even Lighter Slate (Elevated Surfaces)
     },
     text: {
       primary: '#FFFFFF',   // White (High Contrast)
       secondary: '#E2E8F0', // Off-white/Light Gray (Subtitles)
       tertiary: '#94A3B8',  // Muted Gray
       disabled: '#64748B',  // Disabled Text
-      inverse: '#14381B',   // Dark Green for inverse backgrounds
+      inverse: '#0f172a',   // Dark Slate for inverse backgrounds
     },
     border: {
-      light: '#2D7A3C',     // Lighter Green Border
-      medium: '#1F572A',    // Medium Green Border
-      dark: '#0A1F0E',      // Dark Green Border
+      subtle: '#1e293b',    // Subtle Border
+      light: '#334155',     // Light Border
+      medium: '#475569',    // Medium Border
+      dark: '#64748B',      // Dark Border
     },
     neutral: {
       white: '#FFFFFF',
       black: '#000000',
       gray: {
-        50: '#051107',
-        100: '#0a1f0e',
-        200: '#14381B',
-        300: '#1a4221',
-        400: '#23522b',
-        500: '#2d7a3c',
-        600: '#94a3b8',
-        700: '#cbd5e1',
-        800: '#e2e8f0',
+        50: '#0f172a',
+        100: '#1e293b',
+        200: '#334155',
+        300: '#475569',
+        400: '#64748B',
+        500: '#94a3B8',
+        600: '#cbd5e1',
+        700: '#e2e8f0',
+        800: '#f1f5f9',
         900: '#ffffff',
       },
     }

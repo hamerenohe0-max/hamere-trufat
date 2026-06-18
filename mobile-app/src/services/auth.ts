@@ -1,4 +1,4 @@
-import { apiFetch } from './api';
+import { apiFetch, API_URL } from './api';
 import { User } from '../types/models';
 
 export interface TokenBundle {
@@ -91,6 +91,31 @@ export const authApi = {
     apiFetch<{ success: boolean }>('/auth/logout', {
       method: 'POST',
     }),
+
+  uploadAvatar: async (fileUri: string) => {
+    const { tokens } = (await import('../store/useAuthStore')).useAuthStore.getState();
+    const formData = new FormData();
+    formData.append('file', {
+      uri: fileUri,
+      type: 'image/jpeg',
+      name: 'avatar.jpg',
+    } as any);
+
+    const response = await fetch(`${API_URL}/users/me/avatar`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${tokens?.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Avatar upload failed');
+    }
+
+    return response.json() as Promise<{ avatarUrl: string }>;
+  },
 };
 
 

@@ -14,10 +14,10 @@ hamere-trufat/
 
 ## 🛠️ Tech Stack
 
-- **Backend**: NestJS, MongoDB, JWT Authentication
+- **Backend**: NestJS, PostgreSQL (via Supabase), JWT Authentication
 - **Admin Panel**: Next.js, React, Tailwind CSS, Shadcn/ui
 - **Mobile App**: React Native, Expo, TypeScript
-- **Database**: MongoDB (MongoDB Atlas)
+- **Database**: PostgreSQL (Supabase)
 - **Deployment**: Railway (backend), Vercel (admin), Expo EAS (mobile)
 
 ## 🚀 Quick Start
@@ -25,7 +25,7 @@ hamere-trufat/
 ### Prerequisites
 
 - Node.js v18+
-- MongoDB (local or MongoDB Atlas)
+- Supabase account (free — for database)
 - Git
 
 ### Installation
@@ -67,7 +67,7 @@ See `DEPLOY.md` for complete deployment guide.
 **Hosting:**
 - Backend: Railway (free tier available)
 - Admin Panel: Vercel (free tier)
-- Database: MongoDB Atlas (free tier)
+- Database: Supabase (PostgreSQL, free tier)
 - Mobile: Expo EAS Build
 
 ## 📝 License

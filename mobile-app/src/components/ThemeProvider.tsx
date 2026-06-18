@@ -17,6 +17,7 @@ interface ColorScheme {
         inverse: string;
     };
     border: {
+        subtle: string;
         light: string;
         medium: string;
         dark: string;
@@ -40,7 +41,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         if (prefTheme === 'system') {
             return systemColorScheme === 'dark' ? 'dark' : 'light';
         }
-        return prefTheme;
+        return prefTheme as 'light' | 'dark';
     }, [prefTheme, systemColorScheme]);
 
     const value = useMemo(() => {

@@ -10,6 +10,18 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: any;
 }
 
+class ApiError extends Error {
+  status: number;
+  statusText: string;
+
+  constructor(message: string, status: number, statusText: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.statusText = statusText;
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options: ApiOptions = {},
@@ -66,9 +78,7 @@ export async function apiFetch<T>(
     }
     
     // Create error with status code and message
-    const error = new Error(errorMessage);
-    (error as any).status = response.status;
-    (error as any).statusText = response.statusText;
+    const error = new ApiError(errorMessage, response.status, response.statusText);
     throw error;
   }
 

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../../../database/supabase.service';
+import { Database } from '../../../database/types';
 import { CreateNewsDto } from '../dto/create-news.dto';
 import { UpdateNewsDto } from '../dto/update-news.dto';
 
@@ -19,7 +20,7 @@ export class NewsService {
         body: createNewsDto.body,
         tags: createNewsDto.tags,
         images: images,
-        cover_image: createNewsDto.coverImage || (images.length > 0 ? images[0] : null), // Keep for backward compatibility
+        cover_image: createNewsDto.coverImage || (images.length > 0 ? images[0] : null),
         status: createNewsDto.status,
         scheduled_at: createNewsDto.scheduledAt,
         author_id: authorId,
@@ -47,7 +48,7 @@ export class NewsService {
 
     const { data, count } = await query;
 
-    return { items: (data || []) as any[], total: count || 0, limit, offset };
+    return { items: (data || []) as Database['public']['Tables']['news']['Row'][], total: count || 0, limit, offset };
   }
 
   async findOne(id: string, userId?: string): Promise<any> {
@@ -72,14 +73,14 @@ export class NewsService {
         .maybeSingle();
 
       if (reaction) {
-        userReaction = (reaction as any).reaction;
+        userReaction = reaction.reaction;
       }
     }
 
     // Increment views directly (fire and forget)
     this.supabase.client
       .from('news')
-      .update({ views: ((news as any).views || 0) + 1 } as any)
+      .update({ views: (news.views || 0) + 1 })
       .eq('id', id);
 
     return {
@@ -151,7 +152,7 @@ export class NewsService {
       .update({
         status: 'published',
         published_at: new Date().toISOString(),
-      } as any)
+      })
       .eq('id', id)
       .select()
       .single();
@@ -160,7 +161,7 @@ export class NewsService {
   }
 
 
-  async toggleReaction(newsId: string, userId: string, reaction: 'like' | 'dislike'): Promise<any> {
+  async toggleReaction(newsId: string, userId: string, reaction: 'like' | 'dislike'): Promise<{ likes: number; dislikes: number; userReaction: 'like' | 'dislike' | null }> {
     await this.findOne(newsId);
 
     // 1. Get existing reaction
@@ -175,13 +176,13 @@ export class NewsService {
 
     // 2. Insert, Update or Delete reaction
     if (existing) {
-      if ((existing as any).reaction === reaction) {
+      if (existing.reaction === reaction) {
         // Remove reaction if same
-        await this.supabase.client.from('news_reactions').delete().eq('id', (existing as any).id);
+        await this.supabase.client.from('news_reactions').delete().eq('id', existing.id);
         userReaction = null;
       } else {
         // Switch reaction if different
-        await this.supabase.client.from('news_reactions').update({ reaction } as any).eq('id', (existing as any).id);
+        await this.supabase.client.from('news_reactions').update({ reaction }).eq('id', existing.id);
         userReaction = reaction;
       }
     } else {
@@ -190,7 +191,7 @@ export class NewsService {
         news_id: newsId,
         user_id: userId,
         reaction,
-      } as any);
+      });
       userReaction = reaction;
     }
 
@@ -210,7 +211,7 @@ export class NewsService {
     // 4. Sync the counts back to the news table for denormalized access
     await this.supabase.client
       .from('news')
-      .update({ likes, dislikes } as any)
+      .update({ likes, dislikes })
       .eq('id', newsId);
 
     // 5. Return structured result for optimistic UI updates
@@ -230,13 +231,13 @@ export class NewsService {
       .select('*')
       .eq('news_id', newsId)
       .eq('user_id', userId)
-      .single() as any;
+      .maybeSingle();
 
     if (existing) {
       await this.supabase.client.from('news_bookmarks').delete().eq('id', existing.id);
       return { bookmarked: false };
     } else {
-      await this.supabase.client.from('news_bookmarks').insert({ news_id: newsId, user_id: userId } as any);
+      await this.supabase.client.from('news_bookmarks').insert({ news_id: newsId, user_id: userId });
       return { bookmarked: true };
     }
   }
@@ -248,18 +249,18 @@ export class NewsService {
       .select('news_id', { count: 'exact' })
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1) as any;
+      .range(offset, offset + limit - 1);
 
     if (!bookmarks || bookmarks.length === 0) {
       return { items: [], total: 0, limit, offset };
     }
 
-    const newsIds = bookmarks.map((b: any) => b.news_id);
+    const newsIds = bookmarks.map((b: { news_id: string }) => b.news_id);
     const { data: newsItems } = await this.supabase.client
       .from('news')
       .select('*')
       .in('id', newsIds);
 
-    return { items: (newsItems || []) as any[], total: count || 0, limit, offset };
+    return { items: (newsItems || []) as Database['public']['Tables']['news']['Row'][], total: count || 0, limit, offset };
   }
 }

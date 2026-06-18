@@ -32,14 +32,11 @@ Complete step-by-step guide to install and set up the Hamere Trufat platform on 
    - Download: https://git-scm.com/
    - Verify: `git --version`
 
-3. **MongoDB** (choose one):
-   - **Option A: MongoDB Atlas (Cloud - Recommended)**
-     - Sign up: https://www.mongodb.com/cloud/atlas
-     - Free tier available
-     - No local installation needed
-   - **Option B: Local MongoDB**
-     - Download: https://www.mongodb.com/try/download/community
-     - Install and start MongoDB service
+3. **Supabase** (PostgreSQL database)
+   - Sign up: https://supabase.com
+   - Free tier includes 500MB database + 2GB storage
+   - No local installation needed
+   - Used for authentication, database, and file storage
 
 ### Optional (for full features)
 
@@ -108,9 +105,6 @@ SUPABASE_URL=https://obcvkqtgdhohkrjdhdmk.supabase.co
 SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
-# MongoDB Configuration (if using MongoDB)
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/hamere-trufat?retryWrites=true&w=majority
-
 # Cloudinary Configuration (Optional - for media uploads)
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
@@ -175,53 +169,33 @@ Look for your main network interface (usually `en0` on macOS, `eth0` or `wlan0` 
 
 ## 🗄️ Backend Setup
 
-### Step 1: Configure Database
+### Step 1: Configure Supabase
 
-#### Option A: MongoDB Atlas (Recommended)
-
-1. Create account at https://www.mongodb.com/cloud/atlas
-2. Create a new cluster (free tier available)
-3. Create database user (username/password)
-4. Configure Network Access:
-   - Go to "Network Access" in Atlas
-   - Add IP Address: `0.0.0.0/0` (for development) or your specific IP
-5. Get connection string:
-   ```
-   mongodb+srv://username:password@cluster.mongodb.net/hamere-trufat?retryWrites=true&w=majority
-   ```
-6. Add to `backend/.env`:
-   ```env
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/hamere-trufat?retryWrites=true&w=majority
-   ```
-
-#### Option B: Local MongoDB
-
-1. Install MongoDB from https://www.mongodb.com/try/download/community
-2. Start MongoDB service:
-   ```bash
-   # Windows
-   net start MongoDB
-   
-   # macOS (Homebrew)
-   brew services start mongodb-community
-   
-   # Linux
-   sudo systemctl start mongod
-   ```
-3. Add to `backend/.env`:
-   ```env
-   MONGODB_URI=mongodb://localhost:27017/hamere-trufat
-   ```
-
-### Step 2: Configure Supabase
-
-1. Get your Supabase credentials from your Supabase project dashboard
-2. Add to `backend/.env`:
+1. Go to https://supabase.com and sign up (free)
+2. Click **"New Project"**
+3. Enter project name: `hamere-trufat`
+4. Set a secure database password and save it
+5. Choose a region close to you
+6. Click **"Create new project"** (wait ~2 minutes)
+7. Once created, go to **Project Settings → API**
+8. Copy your credentials:
    ```env
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_ANON_KEY=your-anon-key
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    ```
+9. Add these to `backend/.env`
+
+### Step 2: Run Database Migrations
+
+The SQL schema is applied via migration files in the `backend/src/database/migrations/` directory. Run:
+
+```bash
+cd backend
+npm run migrate
+```
+
+This creates all tables (users, news, articles, events, feasts, etc.) and sets up Row Level Security (RLS) policies.
 
 ### Step 3: Configure Cloudinary (Optional)
 
@@ -419,11 +393,10 @@ npm run start:mobile
 **Issue:** Backend fails to start
 
 **Solutions:**
-1. Check MongoDB connection:
-   ```bash
-   # Test MongoDB connection string
-   mongosh "your-connection-string"
-   ```
+1. Check Supabase connection:
+   - Verify `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are set in `.env`
+   - Ensure the Supabase project is active (not paused)
+   - Check that your IP is not blocked by Supabase
 
 2. Verify environment variables:
    ```bash
@@ -519,29 +492,25 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-### MongoDB Connection Error
+### Supabase Connection Error
 
-**Issue:** Backend can't connect to MongoDB
+**Issue:** Backend can't connect to Supabase
 
 **Solutions:**
-1. **Check connection string:**
-   - Verify username/password are correct
-   - Check cluster is not paused
-   - Verify network access (IP whitelist)
+1. **Verify credentials:**
+   - Check `SUPABASE_URL` is correct (format: `https://your-project.supabase.co`)
+   - Ensure `SUPABASE_SERVICE_ROLE_KEY` is valid (regenerate in Supabase dashboard if needed)
+   - Verify the project is not paused in Supabase dashboard
 
-2. **Test connection:**
-   ```bash
-   mongosh "your-connection-string"
-   ```
+2. **Check network:**
+   - Supabase uses SSL/TLS — ensure your network doesn't block it
+   - Corporate firewalls may block database connections
+   - Try switching networks (e.g., mobile hotspot)
 
-3. **Check MongoDB service:**
+3. **Test connection via API:**
    ```bash
-   # If using local MongoDB
-   # Windows
-   net start MongoDB
-   
-   # macOS/Linux
-   sudo systemctl status mongod
+   curl -X GET "https://your-project.supabase.co/rest/v1/" \
+     -H "apikey: your-anon-key"
    ```
 
 ---
@@ -597,7 +566,7 @@ Once everything is running:
 - **Deployment:** See `DEPLOY.md`
 - **Architecture:** See `docs/phase-2-architecture.md`
 - **Testing:** See `docs/testing-guide.md`
-- **MongoDB Troubleshooting:** See `MONGODB-TROUBLESHOOTING.md`
+- **Supabase Troubleshooting:** See `SUPABASE-TROUBLESHOOTING.md`
 
 ---
 
@@ -622,8 +591,9 @@ If you encounter issues:
 - [ ] Backend `.env` configured
 - [ ] Admin `.env.local` configured
 - [ ] Mobile app `.env` configured with correct IP
-- [ ] MongoDB configured (Atlas or local)
-- [ ] Supabase credentials added
+- [ ] Supabase project created
+- [ ] Supabase credentials added to `.env`
+- [ ] Database migrations run
 - [ ] Cloudinary configured (optional)
 - [ ] Backend running successfully
 - [ ] Admin panel accessible

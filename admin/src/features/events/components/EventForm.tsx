@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateEvent, useUpdateEvent, useEvent } from "../hooks/useEvents";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -34,6 +35,8 @@ export function EventForm({ eventId, onSuccess }: EventFormProps) {
   const createMutation = useCreateEvent();
   const updateMutation = useUpdateEvent();
 
+  const [flyerImage, setFlyerImage] = useState("");
+
   const {
     register,
     handleSubmit,
@@ -58,7 +61,7 @@ export function EventForm({ eventId, onSuccess }: EventFormProps) {
       setValue("location", existingEvent.location);
       setValue("featured", existingEvent.featured);
       setValue("reminderEnabled", existingEvent.reminder_enabled);
-      setValue("flyerImage", existingEvent.flyer_images?.[0] || "");
+      setFlyerImage(existingEvent.flyer_images?.[0] || "");
     }
   }, [existingEvent, setValue]);
 
@@ -72,7 +75,7 @@ export function EventForm({ eventId, onSuccess }: EventFormProps) {
         location: data.location,
         featured: data.featured,
         reminderEnabled: data.reminderEnabled,
-        flyerImages: data.flyerImage ? [data.flyerImage] : [],
+        flyerImages: flyerImage ? [flyerImage] : [],
       };
 
       if (eventId) {
@@ -139,8 +142,12 @@ export function EventForm({ eventId, onSuccess }: EventFormProps) {
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Flyer Image URL</label>
-        <Input {...register("flyerImage")} placeholder="https://..." />
+        <label className="text-sm font-medium">Flyer Image</label>
+        <ImageUpload
+          value={flyerImage || undefined}
+          onChange={(url) => setFlyerImage(url || "")}
+          folder="hamere-trufat/events"
+        />
       </div>
 
       <div className="flex items-center space-x-2">

@@ -3,9 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { authClient } from "../../../lib/auth-client";
-import { useAuthStore } from "../../../store/auth-store";
-import { buildBrowserDeviceContext } from "../../../lib/device";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
+import { useAuthStore } from "@/store/auth-store";
+import { buildBrowserDeviceContext } from "@/lib/device";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,21 +46,19 @@ export default function LoginPage() {
 
         <div className="mt-8 space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">Email</label>
-            <input
+            <Label>Email</Label>
+            <Input
               type="email"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="mt-1"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">
-              Password
-            </label>
-            <input
+            <Label>Password</Label>
+            <Input
               type="password"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="mt-1"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -67,16 +68,16 @@ export default function LoginPage() {
               {(mutation.error as Error).message ?? "Login failed"}
             </p>
           )}
-          <button
+          <Button
             onClick={() => {
               clearSession();
               mutation.mutate();
             }}
             disabled={!email || !password || mutation.isPending}
-            className="flex w-full items-center justify-center rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+            className="w-full"
           >
             {mutation.isPending ? "Signing in…" : "Sign in"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

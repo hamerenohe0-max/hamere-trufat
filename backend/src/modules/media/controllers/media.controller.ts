@@ -47,7 +47,7 @@ export class MediaController {
       const result = await this.mediaService.generateUploadSignature({
         folder: query.folder || 'hamere-trufat',
         publicId: query.publicId,
-        resourceType: query.resourceType || 'image',
+        resourceType: query.resourceType || 'auto',
       });
       console.log('Upload signature generated successfully');
       return result;

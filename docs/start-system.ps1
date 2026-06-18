@@ -15,7 +15,7 @@ try {
     exit 1
 }
 
-# Check MongoDB (optional - will use mock data if not available)
+# Check backend config
 Write-Host ""
 Write-Host "📦 Starting Backend Server..." -ForegroundColor Yellow
 Write-Host "   (This will open in a new window)" -ForegroundColor Gray
@@ -54,7 +54,7 @@ Write-Host ""
 Write-Host "📝 First time? Make sure to:" -ForegroundColor Yellow
 Write-Host "   1. Install dependencies: npm install (in each directory)" -ForegroundColor Gray
 Write-Host "   2. Create .env files (see RUN-SYSTEM-LOCALLY.md)" -ForegroundColor Gray
-Write-Host "   3. Start MongoDB (or use MongoDB Atlas)" -ForegroundColor Gray
+Write-Host "   3. Set up Supabase (see RUN-SYSTEM-LOCALLY.md)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Press any key to exit this window (services will keep running)..." -ForegroundColor Gray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

@@ -13,7 +13,7 @@ import { useCreateNews, useUpdateNews, useNews } from "../hooks/useNews";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
-import { X, Upload, Link as LinkIcon } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 
 const newsSchema = z.object({
@@ -39,8 +39,7 @@ export function NewsForm({ newsId }: NewsFormProps) {
   const createMutation = useCreateNews();
   const updateMutation = useUpdateNews();
 
-  const [imageUrls, setImageUrls] = useState<string[]>(['', '', '', '']); // 4 URL input fields
-  const [uploadMode, setUploadMode] = useState<'url' | 'upload'>('upload'); // Toggle between URL and file upload
+  const [imageUrls, setImageUrls] = useState<string[]>(['']);
 
   const {
     register,
@@ -65,65 +64,22 @@ export function NewsForm({ newsId }: NewsFormProps) {
       setValue("tags", existingNews.tags.join(", "));
       setValue("status", existingNews.status);
       const newsImages = existingNews.images || (existingNews.coverImage ? [existingNews.coverImage] : []);
-      // Fill URL inputs with existing images
-      const urls = [...newsImages, '', '', '', ''].slice(0, 4);
-      setImageUrls(urls);
+      setImageUrls(newsImages.length > 0 ? newsImages : ['']);
       setValue("images", newsImages);
     }
   }, [existingNews, setValue]);
 
-  // Convert Google Drive sharing links to direct image URLs
-  const convertGoogleDriveLink = (url: string): string => {
-    if (!url || typeof url !== 'string') return url;
-    
-    // Match Google Drive sharing link format: https://drive.google.com/file/d/FILE_ID/view
-    // Also handles: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (driveMatch) {
-      const fileId = driveMatch[1];
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  const addImageSlot = () => {
+    if (imageUrls.length >= 4) {
+      toast.error("Maximum 4 images allowed");
+      return;
     }
-    
-    // Also handle shortened Google Drive links
-    const shortMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
-    if (shortMatch) {
-      const fileId = shortMatch[1];
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
-    }
-    
-    // Handle direct file ID in URL
-    const directIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    if (directIdMatch && url.includes('drive.google.com')) {
-      const fileId = directIdMatch[1];
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
-    }
-    
-    return url; // Return as-is if not a Google Drive link
+    setImageUrls([...imageUrls, '']);
   };
 
-  const handleUrlChange = (index: number, url: string) => {
-    // Automatically convert Google Drive links
-    const convertedUrl = convertGoogleDriveLink(url);
-    
-    const newUrls = [...imageUrls];
-    newUrls[index] = convertedUrl;
-    setImageUrls(newUrls);
-    
-    // Update form value with non-empty URLs
-    const validUrls = newUrls.filter((u) => u && u.trim().length > 0);
-    setValue("images", validUrls);
-    
-    // Show notification if conversion happened
-    if (convertedUrl !== url && url.includes('drive.google.com')) {
-      toast.info("Google Drive link converted to direct image URL");
-    }
-  };
-
-  const removeImageUrl = (index: number) => {
-    const newUrls = [...imageUrls];
-    newUrls[index] = '';
-    setImageUrls(newUrls);
-    
+  const removeImage = (index: number) => {
+    const newUrls = imageUrls.filter((_, i) => i !== index);
+    setImageUrls(newUrls.length > 0 ? newUrls : ['']);
     const validUrls = newUrls.filter((u) => u && u.trim().length > 0);
     setValue("images", validUrls);
   };
@@ -134,21 +90,6 @@ export function NewsForm({ newsId }: NewsFormProps) {
       
       // Get valid image URLs (non-empty)
       const validImageUrls = imageUrls.filter((url) => url && url.trim().length > 0);
-      
-      // Validate URLs
-      const invalidUrls = validImageUrls.filter((url) => {
-        try {
-          new URL(url);
-          return false;
-        } catch {
-          return true;
-        }
-      });
-      
-      if (invalidUrls.length > 0) {
-        toast.error("Please enter valid image URLs (must start with http:// or https://)");
-        return;
-      }
 
       if (newsId) {
         // Update existing news
@@ -231,39 +172,13 @@ export function NewsForm({ newsId }: NewsFormProps) {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Images (up to 4)
-              </label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={uploadMode === 'upload' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setUploadMode('upload')}
-                >
-                  <Upload className="h-4 w-4 mr-1" />
-                  Upload
-                </Button>
-                <Button
-                  type="button"
-                  variant={uploadMode === 'url' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setUploadMode('url')}
-                >
-                  <LinkIcon className="h-4 w-4 mr-1" />
-                  URL
-                </Button>
-              </div>
-            </div>
-            
-            {uploadMode === 'upload' ? (
-              <div className="space-y-4">
-                {imageUrls.map((url, index) => (
-                  <div key={index}>
-                    <label className="block text-xs text-gray-600 mb-1">
-                      Image {index + 1}
-                    </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Images (up to 4)
+            </label>
+            <div className="space-y-3">
+              {imageUrls.map((url, index) => (
+                <div key={index} className="flex gap-2 items-start">
+                  <div className="flex-1">
                     <ImageUpload
                       value={url || undefined}
                       onChange={(newUrl) => {
@@ -276,53 +191,30 @@ export function NewsForm({ newsId }: NewsFormProps) {
                       folder="hamere-trufat/news"
                     />
                   </div>
-                ))}
-                <p className="text-xs text-gray-500">
-                  Upload images directly to Cloudinary. Images are optimized automatically.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500 mb-3">
-                  Enter image URLs (e.g., from Cloudinary, Imgur, or any image hosting service). 
-                  These will appear in the mobile app. Leave empty if not needed.
-                </p>
-                {imageUrls.map((url, index) => (
-                  <div key={index} className="flex gap-2 items-start">
-                    <div className="flex-1">
-                      <Input
-                        type="url"
-                        placeholder={`Image ${index + 1} URL (e.g., https://res.cloudinary.com/...)`}
-                        value={url}
-                        onChange={(e) => handleUrlChange(index, e.target.value)}
-                      />
-                    </div>
-                    {url && (
-                      <div className="relative w-24 h-24 flex-shrink-0">
-                        <img
-                          src={url}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-full object-cover rounded-lg border border-gray-300"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImageUrl(index)}
-                          className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 z-10"
-                          title="Remove image"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <p className="text-xs text-gray-500">
-                  Tip: Use the Upload mode for direct Cloudinary uploads, or paste URLs here.
-                </p>
-              </div>
+                  {imageUrls.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="mt-2 bg-red-600 text-white rounded-full p-1.5 shadow-lg hover:bg-red-700"
+                      title="Remove image"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {imageUrls.length < 4 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addImageSlot}
+                className="mt-2"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Image
+              </Button>
             )}
           </div>
 

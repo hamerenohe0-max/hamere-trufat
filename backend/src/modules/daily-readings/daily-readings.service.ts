@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../../database/supabase.service';
+import { Database } from '../../database/types';
 import { CreateDailyReadingDto } from './dto/create-daily-reading.dto';
 
 @Injectable()

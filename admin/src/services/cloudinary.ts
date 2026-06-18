@@ -1,12 +1,12 @@
 /**
- * Cloudinary Unsigned Upload Service
+ * Cloudinary Signed Upload Service
  * 
  * This service handles direct uploads from the admin panel to Cloudinary
- * using unsigned uploads with an upload preset.
- * 
- * Security: No API keys or secrets are exposed to the frontend.
- * The upload preset is configured in Cloudinary dashboard with security settings.
+ * using signed uploads. The signature is obtained from the backend API,
+ * so no API secrets are exposed to the frontend.
  */
+
+import { apiFetch } from "@/lib/api";
 
 interface UploadOptions {
   file: File;
@@ -24,32 +24,36 @@ interface UploadResult {
   format?: string;
 }
 
-/**
- * Get Cloudinary configuration from environment variables
- */
-function getCloudinaryConfig(): { cloudName: string; uploadPreset: string } {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'hamere-trufat-unsigned';
-
-  if (!cloudName) {
-    throw new Error(
-      'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is not configured. ' +
-      'Please set it in your .env file.'
-    );
-  }
-
-  return { cloudName, uploadPreset };
+interface SignatureResponse {
+  signature: string;
+  timestamp: number;
+  cloudName: string;
+  apiKey: string;
 }
 
 /**
- * Upload file directly to Cloudinary using unsigned upload preset
+ * Get upload signature from backend
+ */
+async function getUploadSignature(folder: string, resourceType?: string): Promise<SignatureResponse> {
+  let params = `folder=${encodeURIComponent(folder)}`;
+  if (resourceType) {
+    params += `&resourceType=${resourceType}`;
+  }
+  return apiFetch<SignatureResponse>(`/media/upload-signature?${params}`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Upload file directly to Cloudinary using signed upload
  */
 async function uploadToCloudinary(
   file: File,
   folder: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  resourceType?: string
 ): Promise<UploadResult> {
-  const { cloudName, uploadPreset } = getCloudinaryConfig();
+  const { signature, timestamp, cloudName, apiKey } = await getUploadSignature(folder, resourceType);
 
   return new Promise((resolve, reject) => {
     const formData = new FormData();
@@ -57,16 +61,18 @@ async function uploadToCloudinary(
     // Add file
     formData.append('file', file);
 
-    // Add upload preset (required for unsigned uploads)
-    formData.append('upload_preset', uploadPreset);
+    // Add signed upload parameters
+    formData.append('timestamp', String(timestamp));
+    formData.append('signature', signature);
+    formData.append('api_key', apiKey);
 
-    // Add folder if specified
-    if (folder) {
-      formData.append('folder', folder);
+    // Add folder
+    formData.append('folder', folder);
+
+    // Include resource type if specified (e.g., 'raw' for PDFs)
+    if (resourceType) {
+      formData.append('resource_type', resourceType);
     }
-
-    // Set resource type to auto (Cloudinary will detect)
-    formData.append('resource_type', 'auto');
 
     // Create XMLHttpRequest for progress tracking
     const xhr = new XMLHttpRequest();
@@ -124,37 +130,61 @@ async function uploadToCloudinary(
 }
 
 /**
- * Main upload function - handles the complete flow
+ * Validate image file
+ */
+export function validateImageFile(file: File, maxSizeMB = 10): void {
+  if (!file) {
+    throw new Error('No file provided');
+  }
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Only image files are supported');
+  }
+  const maxSize = maxSizeMB * 1024 * 1024;
+  if (file.size > maxSize) {
+    throw new Error(`File size exceeds ${maxSizeMB}MB limit`);
+  }
+}
+
+/**
+ * Upload image to Cloudinary
  */
 export async function uploadImageToCloudinary(
   options: UploadOptions
 ): Promise<UploadResult> {
-  const { file, folder = 'hamere-trufat', publicId, onProgress } = options;
+  const { file, folder = 'hamere-trufat', onProgress } = options;
 
-  // Validate file
+  validateImageFile(file);
+
+  try {
+    return await uploadToCloudinary(file, folder, onProgress);
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error('Unknown error during upload');
+  }
+}
+
+/**
+ * Upload any file (PDF, document, etc.) to Cloudinary
+ */
+export async function uploadFileToCloudinary(
+  options: UploadOptions & { resourceType?: string }
+): Promise<UploadResult> {
+  const { file, folder = 'hamere-trufat', onProgress, resourceType = 'raw' } = options;
+
   if (!file) {
     throw new Error('No file provided');
   }
 
-  // Validate file type (images only for now)
-  if (!file.type.startsWith('image/')) {
-    throw new Error('Only image files are supported');
-  }
-
-  // Validate file size (10MB limit)
-  const maxSize = 10 * 1024 * 1024; // 10MB
+  // Validate file size (50MB limit for documents)
+  const maxSize = 50 * 1024 * 1024;
   if (file.size > maxSize) {
-    throw new Error('File size exceeds 10MB limit');
+    throw new Error('File size exceeds 50MB limit');
   }
 
   try {
-    // Upload directly to Cloudinary using unsigned upload preset
-    const result = await uploadToCloudinary(file, folder, onProgress);
-    return result;
+    return await uploadToCloudinary(file, folder, onProgress, resourceType);
   } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
+    if (error instanceof Error) throw error;
     throw new Error('Unknown error during upload');
   }
 }
@@ -207,18 +237,15 @@ export async function uploadAudioToCloudinary(
   }
 
   // Validate file size (50MB limit for audio)
-  const maxSize = 50 * 1024 * 1024; // 50MB
+  const maxSize = 50 * 1024 * 1024;
   if (file.size > maxSize) {
     throw new Error('File size exceeds 50MB limit');
   }
 
   try {
-    const result = await uploadToCloudinary(file, folder, onProgress);
-    return result;
+    return await uploadToCloudinary(file, folder, onProgress, 'video');
   } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
+    if (error instanceof Error) throw error;
     throw new Error('Unknown error during upload');
   }
 }

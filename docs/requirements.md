@@ -5,7 +5,7 @@ Deliver a unified platform for Hamere Trufat to coordinate mobile data collectio
 
 ## Tech Stack
 - Mobile: React Native + Expo (TypeScript)
-- Backend: NestJS (TypeScript) + MongoDB (Mongoose ODM)
+- Backend: NestJS (TypeScript) + Supabase (PostgreSQL)
 - Admin: Next.js (App Router, TypeScript) + Tailwind CSS + shadcn/ui
 - Tooling: Node.js 24 LTS, npm, Git, Expo CLI, Nest CLI
 

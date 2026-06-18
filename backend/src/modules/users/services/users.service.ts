@@ -1,11 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { ConfigService } from '@nestjs/config';
+import { v2 as cloudinary } from 'cloudinary';
 import { SupabaseService } from '../../../database/supabase.service';
 import { Database } from '../../../database/types';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { RecordDeviceDto } from '../dto/record-device.dto';
+import { getCloudinaryConfig, initializeCloudinary } from '../../../config/cloudinary.config';
 
 export interface SafeUser {
   id: string;
@@ -27,9 +30,17 @@ export interface SafeUser {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly supabase: SupabaseService) { }
+  private cloudinaryConfig: { cloudName: string; apiKey: string; apiSecret: string } | null;
 
-  async create(createDto: CreateUserDto): Promise<any> {
+  constructor(
+    private readonly supabase: SupabaseService,
+    private configService: ConfigService,
+  ) {
+    this.cloudinaryConfig = getCloudinaryConfig(this.configService);
+    initializeCloudinary(this.cloudinaryConfig);
+  }
+
+  async create(createDto: CreateUserDto): Promise<Database['public']['Tables']['users']['Row']> {
     const passwordHash = await bcrypt.hash(createDto.password, 12);
 
     // Start a transaction-like approach (though Supabase/PostgREST doesn't support traditional transactions over API easily without RPC)
@@ -41,7 +52,7 @@ export class UsersService {
         name: createDto.name,
         email: createDto.email,
         password_hash: passwordHash,
-        role: (createDto.role as any) ?? 'user',
+        role: (createDto.role as Database['public']['Tables']['users']['Insert']['role']) ?? 'user',
         // We still keep basic profile in JSON for backward compatibility if needed, 
         // or just rely on the join. For now, let's keep it minimal or empty.
         profile: {},
@@ -52,11 +63,11 @@ export class UsersService {
     if (error) throw new Error(error.message);
 
     // If role is publisher, create entry in publishers table
-    if ((user as any).role === 'publisher') {
+    if (user.role === 'publisher') {
       await this.supabase.client
         .from('publishers' as any)
         .insert({
-          id: (user as any).id,
+          id: user.id,
           phone: createDto.phone,
         });
     }
@@ -64,26 +75,26 @@ export class UsersService {
     return user;
   }
 
-  async findByEmail(email: string): Promise<any | null> {
+  async findByEmail(email: string): Promise<any> {
     const { data } = await this.supabase.client
-      .from('users' as any)
+      .from('users')
       .select('*, publishers(*)')
       .eq('email', email.toLowerCase())
       .single();
 
     if (!data) return null;
-    return this.mapUserWithPublisher(data as any);
+    return this.mapUserWithPublisher(data);
   }
 
-  async findById(id: string): Promise<any | null> {
+  async findById(id: string): Promise<any> {
     const { data } = await this.supabase.client
-      .from('users' as any)
+      .from('users')
       .select('*, publishers(*)')
       .eq('id', id)
       .single();
 
     if (!data) return null;
-    return this.mapUserWithPublisher(data as any);
+    return this.mapUserWithPublisher(data);
   }
 
   async updateProfile(userId: string, profileDto: UpdateProfileDto) {
@@ -138,7 +149,7 @@ export class UsersService {
         .eq('id', userId)
         .single();
 
-      const currentProfile = ((currentUser as any)?.profile as any) || {};
+      const currentProfile = (currentUser?.profile as Record<string, unknown>) || {};
       const newProfile = {
         ...currentProfile,
         ...(profileDto.bio !== undefined && { bio: profileDto.bio }),
@@ -150,17 +161,17 @@ export class UsersService {
 
       await this.supabase.client
         .from('users')
-        .update({ profile: newProfile })
+        .update({ profile: newProfile as any })
         .eq('id', userId);
     }
 
     return this.getFullProfile(userId);
   }
 
-  async getFullProfile(userId: string): Promise<any> {
+  async getFullProfile(userId: string): Promise<{ id: string; name: string; email: string; role: string; status: string; profile: Record<string, unknown>; lastLoginAt: string | null; createdAt: string; updatedAt: string }> {
     // Join with publishers table
     const { data: user, error } = await this.supabase.client
-      .from('users' as any)
+      .from('users')
       .select('*, publishers(*)')
       .eq('id', userId)
       .single();
@@ -189,7 +200,7 @@ export class UsersService {
       }
     } else {
       // Fallback to JSON profile for backward compatibility or non-publishers
-      profile = (userData.profile as any) || {};
+      profile = userData.profile || {};
     }
 
     return {
@@ -203,6 +214,60 @@ export class UsersService {
       createdAt: userData.created_at,
       updatedAt: userData.updated_at,
     };
+  }
+
+  async uploadAvatar(userId: string, file: any): Promise<string> {
+    if (!this.cloudinaryConfig) {
+      throw new InternalServerErrorException('Cloudinary is not configured');
+    }
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'image',
+          folder: 'hamere-trufat/avatars',
+          width: 300,
+          height: 300,
+          crop: 'limit',
+          quality: 'auto',
+        },
+        async (error, result) => {
+          if (error || !result) {
+            reject(error || new Error('Upload failed'));
+            return;
+          }
+
+          // Update avatar URL in database
+          const { data: user } = await this.supabase.client
+            .from('users')
+            .select('role')
+            .eq('id', userId)
+            .single();
+
+          if (user?.role === 'publisher') {
+            await this.supabase.client
+              .from('publishers' as any)
+              .upsert({ id: userId, avatar_url: result.secure_url });
+          } else {
+            const { data: currentUser } = await this.supabase.client
+              .from('users')
+              .select('profile')
+              .eq('id', userId)
+              .single();
+
+            const currentProfile = (currentUser?.profile as Record<string, unknown>) || {};
+            await this.supabase.client
+              .from('users')
+              .update({ profile: { ...currentProfile, avatarUrl: result.secure_url } as any })
+              .eq('id', userId);
+          }
+
+          resolve(result.secure_url);
+        },
+      );
+
+      uploadStream.end(file.buffer);
+    });
   }
 
   async setRefreshToken(userId: string, refreshTokenHash: string | null) {
@@ -241,9 +306,9 @@ export class UsersService {
     return this.toSafeUser(user);
   }
 
-  async findByRole(role?: string): Promise<any[]> {
+  async findByRole(role?: string): Promise<SafeUser[]> {
     let query = this.supabase.client
-      .from('users' as any)
+      .from('users')
       .select('*, publishers(*)')
       .eq('status', 'active');
 
@@ -252,13 +317,13 @@ export class UsersService {
     }
 
     const { data } = await query;
-    return (data || []).map(u => this.mapUserWithPublisher(u as any));
+    return (data || []).map(u => this.mapUserWithPublisher(u));
   }
 
   async findAll(filters?: { role?: string; status?: string; limit?: number; offset?: number }) {
     // Select with join
     let query = this.supabase.client
-      .from('users' as any)
+      .from('users')
       .select('*, publishers(*)', { count: 'exact' });
 
     if (filters?.role) query = query.eq('role', filters.role);
@@ -270,7 +335,7 @@ export class UsersService {
     query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
     const { data, count } = await query;
-    const items = (data || []).map(u => this.mapUserWithPublisher(u as any));
+    const items = (data || []).map(u => this.mapUserWithPublisher(u));
 
     return {
       items,
@@ -280,7 +345,7 @@ export class UsersService {
     };
   }
 
-  async updateStatus(userId: string, status: 'active' | 'suspended'): Promise<any> {
+  async updateStatus(userId: string, status: 'active' | 'suspended'): Promise<Database['public']['Tables']['users']['Row']> {
     const { data, error } = await this.supabase.client
       .from('users')
       .update({ status })
@@ -311,9 +376,9 @@ export class UsersService {
     }
   }
 
-  async update(userId: string, updates: Database['public']['Tables']['users']['Update']): Promise<any> {
+  async update(userId: string, updates: Database['public']['Tables']['users']['Update']): Promise<Database['public']['Tables']['users']['Row']> {
     const { data, error } = await this.supabase.client
-      .from('users' as any)
+      .from('users')
       .update(updates)
       .eq('id', userId)
       .select()
@@ -323,9 +388,9 @@ export class UsersService {
     return data;
   }
 
-  async getPublicProfile(userId: string): Promise<any> {
+  async getPublicProfile(userId: string): Promise<SafeUser> {
     const { data: user, error } = await this.supabase.client
-      .from('users' as any)
+      .from('users')
       .select('id, name, profile, role, created_at, updated_at, publishers(*)')
       .eq('id', userId)
       .eq('status', 'active')
@@ -335,7 +400,7 @@ export class UsersService {
       throw new NotFoundException('User profile not found');
     }
 
-    return this.mapUserWithPublisher(user as any);
+    return this.mapUserWithPublisher(user);
   }
 
   async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
@@ -380,7 +445,7 @@ export class UsersService {
     return { success: true, message: 'Password changed successfully' };
   }
 
-  private mapUserWithPublisher(user: any): SafeUser {
+  private mapUserWithPublisher(user: any): SafeUser & { password_hash?: string | null; refresh_token_hash?: string | null } {
     let profile: any = {};
 
     if (user.role === 'publisher' && user.publishers) {
@@ -413,7 +478,7 @@ export class UsersService {
       // Include auth fields for internal use (AuthService needs them)
       password_hash: user.password_hash,
       refresh_token_hash: user.refresh_token_hash,
-    } as any;
+    } as SafeUser & { password_hash?: string | null; refresh_token_hash?: string | null };
   }
 
   toSafeUser(user: any): SafeUser {
@@ -424,10 +489,10 @@ export class UsersService {
       email: user.email,
       role: user.role,
       status: user.status,
-      profile: user.profile,
+      profile: (user.profile || {}) as any,
       lastLoginAt: user.last_login_at ? new Date(user.last_login_at) : undefined,
-      createdAt: new Date(user.created_at),
-      updatedAt: new Date(user.updated_at),
+      createdAt: new Date(user.created_at || ''),
+      updatedAt: new Date(user.updated_at || ''),
     };
   }
 }

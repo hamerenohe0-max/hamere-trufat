@@ -137,8 +137,8 @@ Tests:       1 failed, 1 passed, 2 total
 ### Tests Failing
 
 1. **Check Test Database**
-   - Ensure MongoDB is running (for integration tests)
-   - Or use MongoDB Memory Server (automatic)
+   - Ensure Supabase is accessible (for integration tests)
+   - Or mock the Supabase client in unit tests
 
 2. **Check Environment Variables**
    - Ensure `.env.test` exists (if needed)

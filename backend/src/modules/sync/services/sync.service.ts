@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../../../database/supabase.service';
+import { Json } from '../../../database/types';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -30,12 +31,12 @@ export class SyncService {
       const { data } = await this.supabase.client
         .from('offline_cache')
         .update({
-          payload: payload as any,
+          payload: payload as Json,
           checksum,
           version,
           expires_at: expiresAt ? expiresAt.toISOString() : null,
-        } as any)
-        .eq('id', (existing as any).id)
+        })
+        .eq('id', existing.id)
         .select()
         .single();
       return data;
@@ -48,11 +49,11 @@ export class SyncService {
         device_id: deviceId,
         entity,
         key,
-        payload: payload as any,
+        payload: payload as Json,
         checksum,
         version,
         expires_at: expiresAt ? expiresAt.toISOString() : null,
-      } as any)
+      })
       .select()
       .single();
 
